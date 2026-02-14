@@ -1,0 +1,24 @@
+{
+  "name": "@dmikalova/mklv-config",
+  "version": "0.1.0",
+  "exports": "./src/schema.ts",
+
+  "tasks": {
+    "check": "deno check src/**/*.ts",
+    "lint": "deno lint",
+    "fmt": "deno fmt",
+  },
+
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+    },
+  },
+
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "singleQuote": true,
+  },
+}

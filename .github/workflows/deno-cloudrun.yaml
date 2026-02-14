@@ -1,0 +1,73 @@
+# Deno Cloud Run Deploy - Reusable CI/CD Workflow
+#
+# This workflow provides opinionated CI/CD for Deno apps deploying to GCP Cloud Run.
+# It runs Dagger pipeline for lint → test → build → migrate → deploy.
+#
+# Usage in app repo:
+#   jobs:
+#     deploy:
+#       uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main
+#       secrets: inherit
+
+name: Deno Cloud Run Deploy
+
+on:
+  workflow_call:
+
+# Hardcoded GCP configuration (convention over configuration)
+env:
+  GCP_PROJECT: mklv-infrastructure
+  GCP_REGION: us-west1
+  WIF_PROVIDER: projects/mklv-infrastructure/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_SERVICE_ACCOUNT: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
+
+jobs:
+  pipeline:
+    name: CI/CD Pipeline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # CI: lint, check, test
+      - name: Run Dagger CI
+        uses: dagger/dagger-for-github@v6
+        with:
+          verb: call
+          module: github.com/dmikalova/github-meta/dagger/deno
+          args: ci --source=.
+
+      # Release: create/update release PR, create release on merge
+      - name: Release Please
+        id: release
+        if: github.ref == 'refs/heads/main'
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: simple
+
+      # Deploy: only when a release was created
+      - name: Authenticate to GCP
+        if: steps.release.outputs.release_created == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Run Dagger CD
+        if: steps.release.outputs.release_created == 'true'
+        uses: dagger/dagger-for-github@v6
+        with:
+          verb: call
+          module: github.com/dmikalova/github-meta/dagger/deno
+          args: >-
+            deploy-only
+            --source=.
+            --version=${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}
+            --github-token=env:GITHUB_TOKEN
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
