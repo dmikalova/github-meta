@@ -1,0 +1,48 @@
+# CI/CD for github-meta itself
+#
+# Runs semantic-release to version this repo when changes are pushed.
+# Does not run Dagger CI since this repo is the Dagger module, not a Deno app.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  release:
+    name: Semantic Release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Create semantic-release config
+        run: |
+          cat > release.config.mjs << 'EOF'
+          export default {
+            branches: ["main"],
+            plugins: [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              ["@semantic-release/github", { failComment: false }],
+            ],
+          };
+          EOF
+
+      - name: Semantic Release
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -17,7 +17,7 @@ on:
 # Hardcoded GCP configuration (convention over configuration)
 env:
   DAGGER_NO_NAG: true
-  DAGGER_PROGRESS: plain
+  DAGGER_PROGRESS: quiet
   GCP_PROJECT: mklv-infrastructure
   GCP_REGION: us-west1
   WIF_PROVIDER: projects/mklv-infrastructure/locations/global/workloadIdentityPools/github/providers/github-oidc
@@ -37,6 +37,15 @@ jobs:
         with:
           fetch-depth: 0  # Full history for semantic-release
 
+      # Cache Dagger engine and modules
+      - name: Cache Dagger
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/dagger
+            ~/.local/share/dagger
+          key: dagger-${{ runner.os }}-0.19.11
+
       # CI: lint, check, test
       - name: Run Dagger CI
         uses: dagger/dagger-for-github@v6
@@ -52,6 +61,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+
+      - name: Cache npm packages
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-semantic-release-${{ runner.os }}
 
       - name: Create semantic-release config
         if: github.ref == 'refs/heads/main'
