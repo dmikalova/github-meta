@@ -17,7 +17,6 @@ on:
 # Hardcoded GCP configuration (convention over configuration)
 env:
   DAGGER_NO_NAG: true
-  DAGGER_PROGRESS: quiet
   GCP_PROJECT: mklv-infrastructure
   GCP_REGION: us-west1
   WIF_PROVIDER: projects/mklv-infrastructure/locations/global/workloadIdentityPools/github/providers/github-oidc
@@ -53,7 +52,9 @@ jobs:
           version: "0.19.11"
           verb: call
           module: github.com/dmikalova/github-meta/dagger/deno
-          args: ci --source=.
+          args: ci --source=. --github-token=env:GITHUB_TOKEN
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Release: determine version using semantic-release
       - name: Setup Node
