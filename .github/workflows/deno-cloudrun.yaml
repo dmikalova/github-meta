@@ -53,6 +53,20 @@ jobs:
         with:
           node-version: 'lts/*'
 
+      - name: Create semantic-release config
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cat > release.config.mjs << 'EOF'
+          export default {
+            branches: ["main"],
+            plugins: [
+              "@semantic-release/commit-analyzer",
+              "@semantic-release/release-notes-generator",
+              ["@semantic-release/github", { failComment: false }],
+            ],
+          };
+          EOF
+
       - name: Semantic Release
         id: release
         if: github.ref == 'refs/heads/main'
