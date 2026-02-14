@@ -1,7 +1,7 @@
 # Deno Cloud Run Deploy - Reusable CI/CD Workflow
 #
 # This workflow provides opinionated CI/CD for Deno apps deploying to GCP Cloud Run.
-# It runs Dagger pipeline for lint → test → build → migrate → deploy.
+# CI: lint → check → test, CD: deno compile → buildah → GHCR → Cloud Run
 #
 # Usage in app repo:
 #   jobs:
@@ -16,7 +16,6 @@ on:
 
 # Hardcoded GCP configuration (convention over configuration)
 env:
-  DAGGER_NO_NAG: true
   GCP_PROJECT: mklv-infrastructure
   GCP_REGION: us-west1
   WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
@@ -36,25 +35,26 @@ jobs:
         with:
           fetch-depth: 0 # Full history for semantic-release
 
-      # Cache Dagger engine and modules
-      - name: Cache Dagger
-        uses: actions/cache@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          path: |
-            ~/.cache/dagger
-            ~/.local/share/dagger
-          key: dagger-${{ runner.os }}-0.19.11
+          deno-version: v2.x
 
       # CI: lint, check, test
-      - name: Run Dagger CI
-        uses: dagger/dagger-for-github@v6
-        with:
-          version: "0.19.11"
-          verb: call
-          module: github.com/dmikalova/github-meta/dagger/deno
-          args: ci --source=. --github-token=env:GITHUB_TOKEN
+      - name: Lint
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: deno lint
+
+      - name: Type Check
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: deno task check
+
+      - name: Test
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: deno task test
 
       # Release: determine version using semantic-release
       - name: Setup Node
@@ -104,7 +104,44 @@ jobs:
             echo "version=${latest#v}" >> $GITHUB_OUTPUT
           fi
 
-      # Deploy: always on main (use new release or latest tag)
+      # Get app name from config
+      - name: Get App Name
+        id: app
+        if: github.ref == 'refs/heads/main'
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: |
+          name=$(deno eval "import c from './mklv.config.mts'; console.log(c.name)")
+          echo "name=$name" >> $GITHUB_OUTPUT
+
+      # Build: deno compile to standalone binary
+      - name: Compile Binary
+        if: github.ref == 'refs/heads/main'
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: deno compile --output app src/main.ts
+
+      # Build container with Buildah (no Dockerfile needed)
+      - name: Build Container
+        if: github.ref == 'refs/heads/main'
+        run: |
+          ctr=$(buildah from gcr.io/distroless/base-debian12)
+          buildah copy $ctr ./app /app
+          buildah config --entrypoint '["/app"]' $ctr
+          buildah config --port 8000 $ctr
+          buildah commit $ctr ${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
+
+      # Push to GHCR
+      - name: Push to GHCR
+        if: github.ref == 'refs/heads/main'
+        run: |
+          image=ghcr.io/dmikalova/${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
+          buildah tag ${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }} $image
+          buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+          buildah push $image
+          echo "Published: $image"
+
+      # Deploy to Cloud Run
       - name: Authenticate to GCP
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/auth@v2
@@ -112,41 +149,12 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
-      - name: Build and Publish Container
-        id: build
-        if: github.ref == 'refs/heads/main'
-        uses: dagger/dagger-for-github@v6
-        with:
-          version: "0.19.11"
-          verb: call
-          module: github.com/dmikalova/github-meta/dagger/deno
-          args: >-
-            deploy-only
-            --source=.
-            --version=${{ steps.version.outputs.version }}
-            --github-token=env:GITHUB_TOKEN
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Deno
-        if: github.ref == 'refs/heads/main'
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-
       - name: Deploy to Cloud Run
         if: github.ref == 'refs/heads/main'
-        env:
-          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
         run: |
-          # Get app name from config file
-          name=$(deno eval "import c from './mklv.config.mts'; console.log(c.name)")
-          # Image URL is returned by Dagger (trim whitespace)
-          image=$(echo '${{ steps.build.outputs.stdout }}' | tr -d '[:space:]')
-
-          echo "Deploying $name from $image"
-          gcloud run deploy "$name" \
-            --image "$image" \
+          image=ghcr.io/dmikalova/${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
+          gcloud run deploy ${{ steps.app.outputs.name }} \
+            --image $image \
             --region ${{ env.GCP_REGION }} \
             --project ${{ env.GCP_PROJECT }} \
             --quiet
