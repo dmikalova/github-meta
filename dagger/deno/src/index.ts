@@ -71,11 +71,7 @@ export class DenoPipeline {
    * Build a minimal container with deno compile
    */
   @func()
-  build(
-    source: Directory,
-    entrypoint: string,
-    githubToken: Secret,
-  ): Container {
+  build(source: Directory, entrypoint: string, githubToken: Secret): Container {
     // Build stage: compile to standalone binary
     const builder = this.denoContainer(source, githubToken).withExec([
       "deno",
