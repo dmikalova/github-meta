@@ -30,7 +30,6 @@ export class DenoPipeline {
    */
   private denoContainer(source: Directory, githubToken: Secret): Container {
     // Create .npmrc for GitHub Packages auth
-    // Deno reads this for npm: imports
     const npmrc = `@dmikalova:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=\${GITHUB_TOKEN}
 `;
