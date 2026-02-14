@@ -2,7 +2,7 @@
 
 - [x] 1.1 Create `src/schema.ts` with MklvConfig interface
 - [x] 1.2 Add deno.jsonc with package name for publishing
-- [ ] 1.3 Test schema import works from external repo
+- [ ] 1.3 Test schema import works from external repo (deferred: requires JSR publish)
 
 ## 2. Dagger Module Setup
 
@@ -35,8 +35,8 @@
 
 ## 5. email-unsubscribe Migration
 
-- [ ] 5.1 Create `mklv.config.mts` in email-unsubscribe repo
-- [ ] 5.2 Replace `.github/workflows/ci.yaml` with reusable workflow call
-- [ ] 5.3 Delete `.github/workflows/deploy.yml`
-- [ ] 5.4 Delete `deploy.config.ts`
+- [x] 5.1 Create `mklv.config.mts` in email-unsubscribe repo
+- [x] 5.2 Replace `.github/workflows/ci.yaml` with reusable workflow call
+- [x] 5.3 Delete `.github/workflows/deploy.yml` (was not present)
+- [x] 5.4 Delete `deploy.config.ts`
 - [ ] 5.5 Push to main and verify pipeline runs

@@ -1,7 +1,7 @@
 # CI/CD for github-meta itself
 #
 # Runs semantic-release to version this repo when changes are pushed.
-# Does not run Dagger CI since this repo is the Dagger module, not a Deno app.
+# Publishes @dmikalova/mklv-config package to GitHub Packages.
 
 name: CI/CD
 
@@ -13,11 +13,12 @@ on:
 
 jobs:
   release:
-    name: Semantic Release
+    name: Release & Publish
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,6 +29,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+          registry-url: 'https://npm.pkg.github.com'
 
       - name: Create semantic-release config
         run: |
@@ -43,6 +45,26 @@ jobs:
           EOF
 
       - name: Semantic Release
+        id: release
         uses: cycjimmy/semantic-release-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publish package to GitHub Packages when a release is created
+      - name: Update package version
+        if: steps.release.outputs.new_release_published == 'true'
+        run: npm version ${{ steps.release.outputs.new_release_version }} --no-git-tag-version
+
+      - name: Install dependencies
+        if: steps.release.outputs.new_release_published == 'true'
+        run: npm ci
+
+      - name: Build TypeScript
+        if: steps.release.outputs.new_release_published == 'true'
+        run: npm run build
+
+      - name: Publish to GitHub Packages
+        if: steps.release.outputs.new_release_published == 'true'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
