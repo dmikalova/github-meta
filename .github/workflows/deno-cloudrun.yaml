@@ -38,6 +38,7 @@ jobs:
       - name: Run Dagger CI
         uses: dagger/dagger-for-github@v6
         with:
+          version: "0.19.11"
           verb: call
           module: github.com/dmikalova/github-meta/dagger/deno
           args: ci --source=.
@@ -62,6 +63,7 @@ jobs:
         if: steps.release.outputs.release_created == 'true'
         uses: dagger/dagger-for-github@v6
         with:
+          version: "0.19.11"
           verb: call
           module: github.com/dmikalova/github-meta/dagger/deno
           args: >-
