@@ -112,7 +112,8 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
-      - name: Run Dagger CD
+      - name: Build and Publish Container
+        id: build
         if: github.ref == 'refs/heads/main'
         uses: dagger/dagger-for-github@v6
         with:
@@ -126,3 +127,26 @@ jobs:
             --github-token=env:GITHUB_TOKEN
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Deno
+        if: github.ref == 'refs/heads/main'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Deploy to Cloud Run
+        if: github.ref == 'refs/heads/main'
+        env:
+          DENO_AUTH_TOKENS: ${{ secrets.GITHUB_TOKEN }}@npm.pkg.github.com
+        run: |
+          # Get app name from config file
+          name=$(deno eval "import c from './mklv.config.mts'; console.log(c.name)")
+          # Image URL is returned by Dagger (trim whitespace)
+          image=$(echo '${{ steps.build.outputs.stdout }}' | tr -d '[:space:]')
+
+          echo "Deploying $name from $image"
+          gcloud run deploy "$name" \
+            --image "$image" \
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ env.GCP_PROJECT }} \
+            --quiet

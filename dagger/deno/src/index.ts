@@ -26,20 +26,28 @@ const GCP_PROJECT = "mklv-infrastructure";
 @object()
 export class DenoPipeline {
   /**
-   * Get a deno container with GitHub Packages npm auth
+   * Get a deno container with GitHub token mounted as a secret file
+   * The token is never written to container layers
    */
   private denoContainer(source: Directory, githubToken: Secret): Container {
-    // Create .npmrc for GitHub Packages auth
-    const npmrc = `@dmikalova:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=\${GITHUB_TOKEN}
-`;
     return dag
       .container()
       .from(`denoland/deno:${DENO_VERSION}`)
       .withDirectory("/app", source)
-      .withNewFile("/app/.npmrc", npmrc)
       .withWorkdir("/app")
-      .withSecretVariable("GITHUB_TOKEN", githubToken);
+      .withMountedSecret("/run/secrets/github_token", githubToken);
+  }
+
+  /**
+   * Run a deno command with DENO_AUTH_TOKENS set from the mounted secret
+   * Used for commands that need to fetch private npm packages
+   */
+  private withDenoAuth(container: Container, cmd: string): Container {
+    return container.withExec([
+      "sh",
+      "-c",
+      `DENO_AUTH_TOKENS=$(cat /run/secrets/github_token)@npm.pkg.github.com ${cmd}`,
+    ]);
   }
 
   /**
@@ -47,9 +55,10 @@ export class DenoPipeline {
    */
   @func()
   async lint(source: Directory, githubToken: Secret): Promise<string> {
-    return await this.denoContainer(source, githubToken)
-      .withExec(["deno", "lint"])
-      .stdout();
+    return await this.withDenoAuth(
+      this.denoContainer(source, githubToken),
+      "deno lint",
+    ).stdout();
   }
 
   /**
@@ -57,9 +66,10 @@ export class DenoPipeline {
    */
   @func()
   async check(source: Directory, githubToken: Secret): Promise<string> {
-    return await this.denoContainer(source, githubToken)
-      .withExec(["deno", "task", "check"])
-      .stdout();
+    return await this.withDenoAuth(
+      this.denoContainer(source, githubToken),
+      "deno task check",
+    ).stdout();
   }
 
   /**
@@ -67,9 +77,10 @@ export class DenoPipeline {
    */
   @func()
   async test(source: Directory, githubToken: Secret): Promise<string> {
-    return await this.denoContainer(source, githubToken)
-      .withExec(["deno", "task", "test"])
-      .stdout();
+    return await this.withDenoAuth(
+      this.denoContainer(source, githubToken),
+      "deno task test",
+    ).stdout();
   }
 
   /**
@@ -77,14 +88,11 @@ export class DenoPipeline {
    */
   @func()
   build(source: Directory, entrypoint: string, githubToken: Secret): Container {
-    // Build stage: compile to standalone binary
-    const builder = this.denoContainer(source, githubToken).withExec([
-      "deno",
-      "compile",
-      "--output",
-      "app",
-      entrypoint,
-    ]);
+    // Build stage: compile to standalone binary with auth for private packages
+    const builder = this.withDenoAuth(
+      this.denoContainer(source, githubToken),
+      `deno compile --output app ${entrypoint}`,
+    );
 
     // Runtime stage: minimal distroless (~20MB total)
     return dag
@@ -163,6 +171,25 @@ export class DenoPipeline {
   }
 
   /**
+   * Build and publish: compile to container and push to GHCR
+   * Returns the published image reference
+   */
+  @func()
+  async buildAndPublish(
+    source: Directory,
+    entrypoint: string,
+    name: string,
+    version: string,
+    githubToken: Secret,
+  ): Promise<string> {
+    // Build
+    const container = this.build(source, entrypoint, githubToken);
+
+    // Publish
+    return await this.publish(container, name, version, githubToken);
+  }
+
+  /**
    * Full CI pipeline: lint, check, test
    */
   @func()
@@ -221,7 +248,8 @@ export class DenoPipeline {
   }
 
   /**
-   * Deploy only (no CI) - reads config and runs build, publish, migrate, deploy
+   * Deploy only (no CI) - reads config, builds, publishes, and returns the image reference
+   * NOTE: Actual Cloud Run deploy is done by the workflow (needs GCP auth on host)
    */
   @func()
   async deployOnly(
@@ -233,14 +261,17 @@ export class DenoPipeline {
     const configJson = await this.readConfig(source, githubToken);
     const config = JSON.parse(configJson);
 
-    // CD: build, publish, migrate, deploy
-    return await this.cd(
+    // Build and publish, return image reference
+    const image = await this.buildAndPublish(
       source,
       config.entrypoint,
       config.name,
       version,
       githubToken,
     );
+
+    // Return just the image URL (workflow will get name from config)
+    return image;
   }
 
   /**
