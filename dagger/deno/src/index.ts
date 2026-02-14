@@ -26,28 +26,22 @@ const GCP_PROJECT = "mklv-infrastructure";
 @object()
 export class DenoPipeline {
   /**
-   * Get a deno container with optional GitHub Packages npm auth
+   * Get a deno container with GitHub Packages npm auth
    */
-  private denoContainer(source: Directory, githubToken?: Secret): Container {
-    let container = dag
+  private denoContainer(source: Directory, githubToken: Secret): Container {
+    return dag
       .container()
       .from(`denoland/deno:${DENO_VERSION}`)
       .withDirectory("/app", source)
-      .withWorkdir("/app");
-
-    // Set GITHUB_TOKEN for GitHub Packages auth (app provides .npmrc)
-    if (githubToken) {
-      container = container.withSecretVariable("GITHUB_TOKEN", githubToken);
-    }
-
-    return container;
+      .withWorkdir("/app")
+      .withSecretVariable("GITHUB_TOKEN", githubToken);
   }
 
   /**
    * Run deno lint on the source directory
    */
   @func()
-  async lint(source: Directory, githubToken?: Secret): Promise<string> {
+  async lint(source: Directory, githubToken: Secret): Promise<string> {
     return await this.denoContainer(source, githubToken)
       .withExec(["deno", "lint"])
       .stdout();
@@ -57,7 +51,7 @@ export class DenoPipeline {
    * Run deno check (type checking) on the source directory
    */
   @func()
-  async check(source: Directory, githubToken?: Secret): Promise<string> {
+  async check(source: Directory, githubToken: Secret): Promise<string> {
     return await this.denoContainer(source, githubToken)
       .withExec(["deno", "task", "check"])
       .stdout();
@@ -67,7 +61,7 @@ export class DenoPipeline {
    * Run deno task test on the source directory
    */
   @func()
-  async test(source: Directory, githubToken?: Secret): Promise<string> {
+  async test(source: Directory, githubToken: Secret): Promise<string> {
     return await this.denoContainer(source, githubToken)
       .withExec(["deno", "task", "test"])
       .stdout();
@@ -80,7 +74,7 @@ export class DenoPipeline {
   build(
     source: Directory,
     entrypoint: string,
-    githubToken?: Secret,
+    githubToken: Secret,
   ): Container {
     // Build stage: compile to standalone binary
     const builder = this.denoContainer(source, githubToken).withExec([
@@ -171,7 +165,7 @@ export class DenoPipeline {
    * Full CI pipeline: lint, check, test
    */
   @func()
-  async ci(source: Directory, githubToken?: Secret): Promise<string> {
+  async ci(source: Directory, githubToken: Secret): Promise<string> {
     await this.lint(source, githubToken);
     await this.check(source, githubToken);
     const testOutput = await this.test(source, githubToken);
@@ -209,7 +203,7 @@ export class DenoPipeline {
    * Returns JSON with name, entrypoint, and runtime settings
    */
   @func()
-  async readConfig(source: Directory, githubToken?: Secret): Promise<string> {
+  async readConfig(source: Directory, githubToken: Secret): Promise<string> {
     // Use Deno to import and serialize the config
     const script = `
       const config = (await import('./mklv.config.mts')).default;
