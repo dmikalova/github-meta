@@ -19,7 +19,7 @@ env:
   DAGGER_NO_NAG: true
   GCP_PROJECT: mklv-infrastructure
   GCP_REGION: us-west1
-  WIF_PROVIDER: projects/mklv-infrastructure/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
   WIF_SERVICE_ACCOUNT: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
 
 jobs:
