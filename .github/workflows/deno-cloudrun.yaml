@@ -35,6 +35,14 @@ jobs:
         with:
           fetch-depth: 0 # Full history for semantic-release
 
+      - name: Cache Git Objects
+        uses: actions/cache@v4
+        with:
+          path: .git/objects
+          key: git-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            git-${{ github.repository }}-
+
       - name: Deno Setup
         uses: denoland/setup-deno@v2
         with:
@@ -56,6 +64,13 @@ jobs:
 
       - name: Deno Compile
         run: deno compile --output app src/main.ts
+
+      - name: Cache npm
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-semantic-release-${{ runner.os }}
 
       - name: Semantic Release Configuration
         run: cp ".npmrc" "$HOME/.npmrc"
@@ -81,6 +96,13 @@ jobs:
             latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
             echo "version=${latest#v}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Cache Buildah
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/containers
+          key: buildah-${{ runner.os }}-distroless
 
       - name: Container Build
         if: github.ref == 'refs/heads/main'
