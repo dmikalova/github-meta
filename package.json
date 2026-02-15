@@ -1,13 +1,16 @@
 {
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  },
   "name": "github-meta",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "scripts": {
     "build": "npm run build --workspaces --if-present"
   },
-  "devDependencies": {
-    "typescript": "^5.3.0"
-  }
+  "workspaces": [
+    "packages/*"
+  ]
 }
