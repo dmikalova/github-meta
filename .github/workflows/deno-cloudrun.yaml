@@ -116,6 +116,9 @@ jobs:
         run: |
           DENO_VERSION=$(cat .deno-version)
 
+          # Authenticate to GHCR for pulling base images
+          buildah login -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+
           # Build stage
           ctr=$(buildah from ghcr.io/denoland/deno:${DENO_VERSION})
           buildah config --workdir /app $ctr
