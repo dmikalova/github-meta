@@ -35,6 +35,10 @@ jobs:
         with:
           fetch-depth: 0 # Full history for semantic-release
 
+      - name: Configure NPM
+        run: |
+          cp .npmrc $HOME/.npmrc
+
       - name: Cache Git Objects
         uses: actions/cache@v4
         with:
@@ -56,14 +60,6 @@ jobs:
         with:
           deno-version-file: .deno-version
 
-      - name: Create .npmrc
-        run: |
-          cat > .npmrc << 'EOF'
-          //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
-          @dmikalova:registry=https://npm.pkg.github.com
-          EOF
-          cp .npmrc ~/.npmrc
-
       - name: Deno Install
         env:
           NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
@@ -82,7 +78,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v4
         with:
-          path: ~/.npm
+          path: $HOME/.npm
           key: npm-semantic-release-${{ runner.os }}
 
       - name: Semantic Release
@@ -129,7 +125,8 @@ jobs:
           pwd
           ls -la
           ls -la ../
-          buildah copy $ctr .npmrc /root/.npmrc
+          ls -la $HOME
+          buildah copy $ctr $HOME/.npmrc /root/.npmrc
           buildah run --env NPM_TOKEN=$NPM_TOKEN $ctr -- deno cache src/main.ts
 
           # Production stage
@@ -147,7 +144,6 @@ jobs:
           buildah tag ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} $image
           buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
           buildah push $image
-          echo "Published: $image"
 
       - name: GCP Authenticate
         if: github.ref == 'refs/heads/main'
