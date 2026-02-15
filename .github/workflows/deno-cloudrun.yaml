@@ -40,22 +40,21 @@ jobs:
         with:
           deno-version-file: .deno-version
 
+      - name: Deno Install
+        env:
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+        run: deno install
+
       - name: Deno Lint
         run: deno lint
 
       - name: Deno Type Check
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task check
 
       - name: Deno Test
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task test
 
       - name: Deno Compile
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno compile --output app src/main.ts
 
       - name: Semantic Release Configuration
