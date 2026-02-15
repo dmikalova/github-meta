@@ -110,12 +110,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/share/containers
-          key: buildah-${{ runner.os }}-distroless-cc
+          key: buildah-${{ runner.os }}-deno-distroless
 
       - name: Container Build
         if: github.ref == 'refs/heads/main'
         run: |
-          ctr=$(buildah from gcr.io/distroless/cc-debian12)
+          DENO_VERSION=$(cat .deno-version)
+          ctr=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
           buildah copy $ctr ./app /app
           buildah config --entrypoint '["/app"]' $ctr
           buildah config --port 8000 $ctr
