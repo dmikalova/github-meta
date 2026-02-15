@@ -39,7 +39,7 @@ jobs:
           extends: "@dmikalova/semantic-release-config"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
 
       # Publish packages to GitHub Packages when a release is created
       - name: Update package versions
@@ -69,4 +69,4 @@ jobs:
             npm publish
           fi
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
