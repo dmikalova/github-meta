@@ -46,7 +46,7 @@ jobs:
       - name: Deno Type Check
         env:
           GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: echo $GITHUB_TOKEN | base64 -e && deno task check
+        run: echo $GITHUB_TOKEN | base64 && deno task check
 
       - name: Deno Test
         env:
