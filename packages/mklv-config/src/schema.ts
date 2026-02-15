@@ -21,6 +21,13 @@
  * Run directly to get JSON: `deno run mklv.config.mts | jq .name`
  */
 
+// Augment ImportMeta for Deno's `main` property
+declare global {
+  interface ImportMeta {
+    main?: boolean;
+  }
+}
+
 /**
  * Runtime configuration for the application.
  */
