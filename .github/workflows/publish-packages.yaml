@@ -36,7 +36,10 @@ jobs:
         uses: actions/setup-node@v4
 
       - name: Test
-        run: npm config list && npm install @dmikalova/semantic-release-config
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+        run: npm config list && npm install @dmikalova/semantic-release-config --no-audit --silent
 
       - name: Semantic Release
         id: release
