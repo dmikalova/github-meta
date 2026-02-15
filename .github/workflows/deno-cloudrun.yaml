@@ -117,7 +117,7 @@ jobs:
           DENO_VERSION=$(cat .deno-version)
 
           # Build stage
-          ctr=$(buildah from docker.io/denoland/deno-bin:${DENO_VERSION})
+          ctr=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
           buildah config --workdir /app $ctr
           buildah copy $ctr . /app
           buildah run --env NPM_TOKEN=$NPM_TOKEN $ctr -- deno cache src/main.ts
@@ -125,7 +125,7 @@ jobs:
           # Production stage
           prod=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
           buildah copy --from $ctr $prod /app /app
-          buildah copy --from $ctr $prod /root/.cache/deno /deno-dir
+          buildah copy --from $ctr $prod /deno-dir /deno-dir
           buildah config --workdir /app $prod
           buildah config --cmd 'run -P src/main.ts' $prod
           buildah commit $prod ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
