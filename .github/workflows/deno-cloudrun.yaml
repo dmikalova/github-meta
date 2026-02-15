@@ -56,6 +56,14 @@ jobs:
         with:
           deno-version-file: .deno-version
 
+      - name: Create .npmrc
+        run: |
+          cat > .npmrc << 'EOF'
+          //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+          @dmikalova:registry=https://npm.pkg.github.com
+          EOF
+          cp .npmrc ~/.npmrc
+
       - name: Deno Install
         env:
           NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
@@ -76,9 +84,6 @@ jobs:
         with:
           path: ~/.npm
           key: npm-semantic-release-${{ runner.os }}
-
-      - name: Semantic Release Configuration
-        run: cp ".npmrc" "$HOME/.npmrc"
 
       - name: Semantic Release
         id: release
@@ -120,6 +125,10 @@ jobs:
           ctr=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
           buildah config --workingdir /app $ctr
           buildah copy $ctr . /app
+          echo "here"
+          pwd
+          ls -la
+          ls -la ../
           buildah copy $ctr .npmrc /root/.npmrc
           buildah run --env NPM_TOKEN=$NPM_TOKEN $ctr -- deno cache src/main.ts
 
