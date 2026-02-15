@@ -70,9 +70,6 @@ jobs:
       - name: Deno Test
         run: deno task test
 
-      - name: Deno Compile
-        run: deno compile --output app src/main.ts
-
       - name: Cache NPM
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v4
@@ -114,13 +111,24 @@ jobs:
 
       - name: Container Build
         if: github.ref == 'refs/heads/main'
+        env:
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: |
           DENO_VERSION=$(cat .deno-version)
-          ctr=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
-          buildah copy $ctr ./app /app
-          buildah config --entrypoint '["/app"]' $ctr
-          buildah config --port 8000 $ctr
-          buildah commit $ctr ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+
+          # Build stage
+          ctr=$(buildah from docker.io/denoland/deno-bin:${DENO_VERSION})
+          buildah config --workdir /app $ctr
+          buildah copy $ctr . /app
+          buildah run --env NPM_TOKEN=$NPM_TOKEN $ctr -- deno cache src/main.ts
+
+          # Production stage
+          prod=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
+          buildah copy --from $ctr $prod /app /app
+          buildah copy --from $ctr $prod /root/.cache/deno /deno-dir
+          buildah config --workdir /app $prod
+          buildah config --cmd 'run -P src/main.ts' $prod
+          buildah commit $prod ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
       - name: GHCR Push
         if: github.ref == 'refs/heads/main'
