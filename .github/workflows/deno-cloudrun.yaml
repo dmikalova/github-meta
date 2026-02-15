@@ -46,7 +46,7 @@ jobs:
       - name: Deno Type Check
         env:
           GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: echo $GITHUB_TOKEN | base64 && deno task check
+        run: base64 && deno task check
 
       - name: Deno Test
         env:
@@ -62,8 +62,6 @@ jobs:
         id: release
         if: github.ref == 'refs/heads/main'
         uses: cycjimmy/semantic-release-action@v4
-        with:
-          extends: dmikalova/github-meta
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
