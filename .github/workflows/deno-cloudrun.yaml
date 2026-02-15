@@ -99,7 +99,7 @@ jobs:
         id: info
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "name=$(deno run mklv.config.mts | jq -r .name)" >> $GITHUB_OUTPUT
+          echo "name=$(jq -r .name mklv.config.json)" >> $GITHUB_OUTPUT
           if [ "${{ steps.release.outputs.new_release_published }}" == "true" ]; then
             echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
           else
