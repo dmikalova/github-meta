@@ -1,6 +1,5 @@
 {
   "name": "@dmikalova/semantic-release-config",
-  "version": "1.0.0",
   "description": "Shared semantic-release configuration for Deno/Cloud Run apps",
   "type": "module",
   "main": "./index.mjs",
