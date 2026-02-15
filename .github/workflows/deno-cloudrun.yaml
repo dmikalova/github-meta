@@ -102,12 +102,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.local/share/containers
-          key: buildah-${{ runner.os }}-distroless
+          key: buildah-${{ runner.os }}-distroless-cc
 
       - name: Container Build
         if: github.ref == 'refs/heads/main'
         run: |
-          ctr=$(buildah from gcr.io/distroless/base-debian12)
+          ctr=$(buildah from gcr.io/distroless/cc-debian12)
           buildah copy $ctr ./app /app
           buildah config --entrypoint '["/app"]' $ctr
           buildah config --port 8000 $ctr
