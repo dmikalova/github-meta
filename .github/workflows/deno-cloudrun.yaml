@@ -82,7 +82,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v4
         with:
-          path: $HOME/.npm
+          path: ~/.npm
           key: npm-semantic-release-${{ runner.os }}
 
       - name: Semantic Release
@@ -106,13 +106,6 @@ jobs:
             latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
             echo "version=${latest#v}" >> $GITHUB_OUTPUT
           fi
-
-      - name: Buildah Cache
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/containers
-          key: buildah-${{ runner.os }}-deno-distroless
 
       - name: Buildah Build
         if: github.ref == 'refs/heads/main'

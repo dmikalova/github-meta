@@ -51,25 +51,16 @@ The schema SHALL be defined as a TypeScript interface that provides compile-time
 - **WHEN** defining the config export
 - **THEN** it uses `satisfies MklvConfig` for type checking
 
-### Requirement: Schema is importable
+### Requirement: Schema is plain JSON
 
-The schema SHALL be importable from a published package or direct URL.
+App repos SHALL define configuration in `mklv.config.json` (plain JSON, no TypeScript dependency).
 
-#### Scenario: Import from package
+#### Scenario: Config is readable by jq
 
-- **WHEN** an app repo imports the schema
-- **THEN** it can use `import type { MklvConfig } from "@dmikalova/mklv-config"`
+- **WHEN** the CI pipeline reads the config
+- **THEN** it uses `jq` to extract values without a runtime dependency
 
-### Requirement: Config file uses .mts extension
+#### Scenario: No npm dependency needed
 
-App repos SHALL define configuration in `mklv.config.mts` (TypeScript module).
-
-#### Scenario: File is type-checked
-
-- **WHEN** the config file is saved
-- **THEN** TypeScript validates it against the MklvConfig type
-
-#### Scenario: File is importable by Dagger
-
-- **WHEN** the Dagger pipeline reads the config
-- **THEN** it can import the `.mts` file directly
+- **WHEN** an app repo defines its config
+- **THEN** it does not require importing any npm package
