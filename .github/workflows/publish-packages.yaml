@@ -32,45 +32,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-          registry-url: "https://npm.pkg.github.com"
-
-      - name: Create semantic-release config
-        run: |
-          cat > release.config.mjs << 'EOF'
-          export default {
-            branches: ["main"],
-            plugins: [
-              ["@semantic-release/commit-analyzer", {
-                releaseRules: [
-                  { breaking: true, release: "major" },
-                  { type: "feat", release: "minor" },
-                  { type: "fix", release: "patch" },
-                  { type: "perf", release: "patch" },
-                  { type: "refactor", release: "patch" },
-                  { type: "style", release: "patch" },
-                  { type: "docs", release: "patch" },
-                  { type: "build", release: "patch" },
-                  { type: "chore", release: "patch" },
-                  { type: "ci", release: "patch" },
-                  { type: "test", release: "patch" },
-                  { type: "revert", release: "patch" },
-                ],
-              }],
-              "@semantic-release/release-notes-generator",
-              ["@semantic-release/github", { failComment: false }],
-            ],
-          };
-          EOF
-
       - name: Semantic Release
         id: release
         uses: cycjimmy/semantic-release-action@v4
+        with:
+          extends: "@dmikalova/semantic-release-config"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
 
       # Publish packages to GitHub Packages when a release is created
       - name: Update package versions
