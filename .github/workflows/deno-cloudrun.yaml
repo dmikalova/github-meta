@@ -41,12 +41,12 @@ jobs:
           deno-version-file: .deno-version
 
       - name: Deno Lint
-        run: gh auth login && deno lint
+        run: deno lint
 
       - name: Deno Type Check
         env:
           GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: gh auth login && deno task check
+        run: echo $GITHUB_TOKEN | base64 -e && deno task check
 
       - name: Deno Test
         env:
