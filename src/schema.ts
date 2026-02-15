@@ -6,17 +6,19 @@
  *
  * Usage in app repo:
  * ```typescript
- * import type { MklvConfig } from "@dmikalova/mklv-config";
+ * import { defineConfig } from "@dmikalova/mklv-config";
  *
- * export default {
+ * export default defineConfig({
  *   name: "my-app",
  *   entrypoint: "src/main.ts",
  *   runtime: {
  *     port: 8000,
  *     healthCheckPath: "/health",
  *   },
- * } satisfies MklvConfig;
+ * }, import.meta);
  * ```
+ *
+ * Run directly to get JSON: `deno run mklv.config.mts | jq .name`
  */
 
 /**
@@ -49,3 +51,24 @@ export const defaults = {
   port: 8000,
   healthCheckPath: "/health",
 } as const;
+
+/**
+ * Define and register app configuration.
+ * Outputs JSON when the config file is run directly (import.meta.main).
+ *
+ * Usage:
+ * ```typescript
+ * import { defineConfig } from "@dmikalova/mklv-config";
+ *
+ * export default defineConfig({
+ *   name: "my-app",
+ *   entrypoint: "src/main.ts",
+ * }, import.meta);
+ * ```
+ */
+export function defineConfig(config: MklvConfig, meta: ImportMeta): MklvConfig {
+  if (meta.main) {
+    console.log(JSON.stringify(config));
+  }
+  return config;
+}

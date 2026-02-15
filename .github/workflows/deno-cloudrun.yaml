@@ -35,125 +35,80 @@ jobs:
         with:
           fetch-depth: 0 # Full history for semantic-release
 
-      - name: Setup Deno
+      - name: Deno Setup
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version-file: .deno-version
 
-      # CI: lint, check, test
-      - name: Lint
-        # env:
-        #   DENO_AUTH_TOKENS: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+      - name: Deno Lint
         run: deno lint
 
-      - name: Type Check
-        # env:
-        #   DENO_AUTH_TOKENS: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+      - name: Deno Type Check
+        env:
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
         run: deno task check
 
-      - name: Test
-        # env:
-        #   DENO_AUTH_TOKENS: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+      - name: Deno Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
         run: deno task test
 
-      # Release: determine version using semantic-release
-      - name: Setup Node
-        if: github.ref == 'refs/heads/main'
-        uses: actions/setup-node@v4
-        with:
-          node-version: "lts/*"
-
-      - name: Cache npm packages
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-semantic-release-${{ runner.os }}
-
-      - name: Create semantic-release config
-        if: github.ref == 'refs/heads/main'
-        run: |
-          cat > release.config.mjs << 'EOF'
-          export default {
-            branches: ["main"],
-            plugins: [
-              "@semantic-release/commit-analyzer",
-              "@semantic-release/release-notes-generator",
-              ["@semantic-release/github", { failComment: false }],
-            ],
-          };
-          EOF
+      - name: Deno Compile
+        env:
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+        run: deno compile --output app src/main.ts
 
       - name: Semantic Release
         id: release
         if: github.ref == 'refs/heads/main'
         uses: cycjimmy/semantic-release-action@v4
+        with:
+          extends: dmikalova/github-meta
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Get version: use new release version or fall back to latest tag
-      - name: Get Version
-        id: version
+      - name: Release Info
+        id: info
         if: github.ref == 'refs/heads/main'
         run: |
+          echo "name=$(deno run mklv.config.mts | jq -r .name)" >> $GITHUB_OUTPUT
           if [ "${{ steps.release.outputs.new_release_published }}" == "true" ]; then
             echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
           else
-            # Get latest tag version (strip 'v' prefix)
             latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
             echo "version=${latest#v}" >> $GITHUB_OUTPUT
           fi
 
-      # Get app name from config
-      - name: Get App Name
-        id: app
-        if: github.ref == 'refs/heads/main'
-        env:
-          DENO_AUTH_TOKENS: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
-        run: |
-          name=$(deno eval "import c from './mklv.config.mts'; console.log(c.name)")
-          echo "name=$name" >> $GITHUB_OUTPUT
-
-      # Build: deno compile to standalone binary
-      - name: Compile Binary
-        if: github.ref == 'refs/heads/main'
-        env:
-          DENO_AUTH_TOKENS: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
-        run: deno compile --output app src/main.ts
-
-      # Build container with Buildah (no Dockerfile needed)
-      - name: Build Container
+      - name: Container Build
         if: github.ref == 'refs/heads/main'
         run: |
           ctr=$(buildah from gcr.io/distroless/base-debian12)
           buildah copy $ctr ./app /app
           buildah config --entrypoint '["/app"]' $ctr
           buildah config --port 8000 $ctr
-          buildah commit $ctr ${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
+          buildah commit $ctr ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
-      # Push to GHCR
-      - name: Push to GHCR
+      - name: GHCR Push
         if: github.ref == 'refs/heads/main'
         run: |
-          image=ghcr.io/dmikalova/${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
-          buildah tag ${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }} $image
+          image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+          buildah tag ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} $image
           buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
           buildah push $image
           echo "Published: $image"
 
-      # Deploy to Cloud Run
-      - name: Authenticate to GCP
+      - name: GCP Authenticate
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Deploy to Cloud Run
+      - name: Cloud Run Deploy
         if: github.ref == 'refs/heads/main'
         run: |
-          image=ghcr.io/dmikalova/${{ steps.app.outputs.name }}:${{ steps.version.outputs.version }}
-          gcloud run deploy ${{ steps.app.outputs.name }} \
+          image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+          gcloud run deploy ${{ steps.info.outputs.name }} \
             --image $image \
             --region ${{ env.GCP_REGION }} \
             --project ${{ env.GCP_PROJECT }} \
