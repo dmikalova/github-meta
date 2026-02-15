@@ -110,7 +110,7 @@ jobs:
       - name: Cloud Run Deploy
         if: github.ref == 'refs/heads/main'
         run: |
-          image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+          image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/ghcr/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
           gcloud run deploy ${{ steps.info.outputs.name }} \
             --image $image \
             --region ${{ env.GCP_REGION }} \
