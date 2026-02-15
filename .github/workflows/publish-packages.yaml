@@ -32,6 +32,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+
+      - name: Test
+        run: npm config list && npm install @dmikalova/semantic-release-config
+
       - name: Semantic Release
         id: release
         uses: cycjimmy/semantic-release-action@v4
