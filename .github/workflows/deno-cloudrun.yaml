@@ -125,7 +125,8 @@ jobs:
           BUILD=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
           buildah config --workingdir /app $BUILD
           buildah copy $BUILD $HOME/.npmrc /root/.npmrc
-          buildah copy $BUILD . /app
+          buildah copy $BUILD deno.lock deno.jsonc /app/
+          buildah copy $BUILD src /app/src
           buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
 
           # Artifact stage
