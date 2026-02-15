@@ -45,17 +45,17 @@ jobs:
 
       - name: Deno Type Check
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: gh auth login && deno task check
 
       - name: Deno Test
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task test
 
       - name: Deno Compile
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}@npm.pkg.github.com
+          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno compile --output app src/main.ts
 
       - name: Semantic Release
