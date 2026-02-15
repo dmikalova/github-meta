@@ -25,6 +25,9 @@ jobs:
   pipeline:
     name: CI/CD Pipeline
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.workflow }}
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
@@ -35,7 +38,8 @@ jobs:
         with:
           fetch-depth: 0 # Full history for semantic-release
 
-      - name: Configure NPM
+      - name: NPM Authn
+        if: github.ref == 'refs/heads/main'
         run: |
           cp .npmrc $HOME/.npmrc
 
@@ -47,7 +51,7 @@ jobs:
           restore-keys: |
             git-${{ github.repository }}-
 
-      - name: Cache Deno
+      - name: Deno Cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/deno
@@ -74,7 +78,7 @@ jobs:
       - name: Deno Test
         run: deno task test
 
-      - name: Cache NPM
+      - name: NPM Cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v4
         with:
@@ -103,14 +107,14 @@ jobs:
             echo "version=${latest#v}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Cache Buildah
+      - name: Buildah Cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v4
         with:
           path: ~/.local/share/containers
           key: buildah-${{ runner.os }}-deno-distroless
 
-      - name: Container Build
+      - name: Buildah Build
         if: github.ref == 'refs/heads/main'
         env:
           NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
@@ -120,7 +124,7 @@ jobs:
           # Build stage
           ctr=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
           buildah config --workingdir /app $ctr
-          buildah copy $ctr .npmrc /root/.npmrc
+          buildah copy $ctr $HOME/.npmrc /root/.npmrc
           buildah copy $ctr deno.lock deno.jsonc /app/
           buildah copy $ctr src /app/src
           buildah run --env NPM_TOKEN=$NPM_TOKEN $ctr -- deno install
@@ -142,7 +146,7 @@ jobs:
           buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
           buildah push $image
 
-      - name: GCP Authenticate
+      - name: GCP Authn
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/auth@v2
         with:
