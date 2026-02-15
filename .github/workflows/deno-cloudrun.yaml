@@ -133,8 +133,9 @@ jobs:
           prod=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
           buildah copy --from $ctr $prod /app /app
           buildah copy --from $ctr $prod /deno-dir /deno-dir
+          buildah config --env DENO_DIR=/deno-dir $prod
           buildah config --workingdir /app $prod
-          buildah config --cmd 'run -P src/main.ts' $prod
+          buildah config --cmd 'run -A --cached-only src/main.ts' $prod
           buildah commit $prod ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
       - name: GHCR Push
