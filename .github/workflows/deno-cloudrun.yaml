@@ -45,18 +45,21 @@ jobs:
 
       - name: Deno Type Check
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task check
 
       - name: Deno Test
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task test
 
       - name: Deno Compile
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno compile --output app src/main.ts
+
+      - name: Semantic Release Configuration
+        run: cp ".npmrc" "$HOME/.npmrc"
 
       - name: Semantic Release
         id: release
@@ -66,7 +69,7 @@ jobs:
           extends: "@dmikalova/semantic-release-config"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
 
       - name: Release Info
         id: info
