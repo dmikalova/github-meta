@@ -1,6 +1,5 @@
 {
   "name": "@dmikalova/mklv-config",
-  "version": "1.0.0",
   "description": "App deployment configuration schema for mklv CI/CD pipeline",
   "type": "module",
   "main": "./dist/schema.js",

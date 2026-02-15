@@ -45,25 +45,28 @@ jobs:
 
       - name: Deno Type Check
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: base64 && deno task check
+          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+        run: deno task check
 
       - name: Deno Test
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno task test
 
       - name: Deno Compile
         env:
-          GITHUB_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno compile --output app src/main.ts
 
       - name: Semantic Release
         id: release
         if: github.ref == 'refs/heads/main'
         uses: cycjimmy/semantic-release-action@v4
+        with:
+          extends: "@dmikalova/semantic-release-config"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
 
       - name: Release Info
         id: info
