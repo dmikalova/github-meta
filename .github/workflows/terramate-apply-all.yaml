@@ -22,8 +22,8 @@ env:
   WIF_SERVICE_ACCOUNT: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
 
 jobs:
-  apply:
-    name: Apply Infrastructure
+  terramate-apply-all:
+    name: Apply All
     runs-on: ubuntu-latest
     concurrency:
       group: terramate-apply
@@ -62,7 +62,7 @@ jobs:
           tofu_wrapper: false
 
       - name: Apply All Stacks
-        run: terramate script run --no-tags=manual cicd
+        run: unset GITHUB_TOKEN && terramate script run --no-tags=manual cicd
 
       - name: NPM Cache
         if: github.ref == 'refs/heads/main'
