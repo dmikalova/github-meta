@@ -70,7 +70,6 @@ jobs:
 
       - name: Apply All Stacks
         run: |
-          gh auth status
           terramate script run --no-tags=manual cicd
         env:
           GITHUB_TOKEN: ""
