@@ -62,7 +62,7 @@ jobs:
           tofu_wrapper: false
 
       - name: Apply All Stacks
-        run: terramate run --no-tags manual script run cicd
+        run: terramate script run --no-tags=manual cicd
 
       - name: NPM Cache
         if: github.ref == 'refs/heads/main'
