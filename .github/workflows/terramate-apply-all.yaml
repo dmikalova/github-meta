@@ -13,6 +13,12 @@ name: Terramate Apply All
 
 on:
   workflow_call:
+    inputs:
+      debug:
+        description: "Run only the debug stack with verbose output"
+        required: false
+        type: boolean
+        default: true
 
 # Hardcoded GCP configuration (convention over configuration)
 env:
@@ -68,7 +74,32 @@ jobs:
           key: terraform-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: terraform-providers-
 
+      - name: Debug Environment
+        if: inputs.debug
+        run: |
+          echo "=== Environment Debug ==="
+          echo "GITHUB_TOKEN set: $([ -n \"$GITHUB_TOKEN_CHECK\" ] && echo 'yes' || echo 'no')"
+          echo "SOPS_AGE_KEY set: $([ -n \"$SOPS_AGE_KEY\" ] && echo 'yes' || echo 'no')"
+          echo "SOPS_AGE_KEY length: ${#SOPS_AGE_KEY}"
+          echo "GCP auth: $(gcloud auth list --format='value(account)' 2>/dev/null || echo 'none')"
+          echo "Working directory: $(pwd)"
+          echo "=== Terramate Stacks ==="
+          terramate list --tags=debug 2>&1 || true
+        env:
+          GITHUB_TOKEN_CHECK: ${{ env.GITHUB_TOKEN }}
+
+      - name: Apply Debug Stack
+        if: inputs.debug
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          terramate script run --tags=debug cicd
+        env:
+          GITHUB_TOKEN: ""
+          TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+          TF_LOG: DEBUG
+
       - name: Apply All Stacks
+        if: ${{ !inputs.debug }}
         run: |
           mkdir -p ~/.terraform.d/plugin-cache
           terramate script run --no-tags=manual cicd
