@@ -22,7 +22,7 @@ The infrastructure repository has no automated deployment - all Terraform/OpenTo
 
 ## Impact
 
-- **github-meta**: New workflow file `.github/workflows/terramate-deploy.yaml`
-- **infrastructure repo**: Will add `.github/workflows/deploy.yaml` that calls the reusable workflow
-- **GCP**: Uses existing Workload Identity Federation setup and `github-actions-deploy` service account
+- **github-meta**: New workflow file `.github/workflows/terramate-apply-all.yaml`
+- **infrastructure repo**: Will add `.github/workflows/cicd.yaml` that calls the reusable workflow
+- **GCP**: Uses existing Workload Identity Federation setup and `github-actions-deploy` service account that is accessible via the infra-deploy topic on the repo
 - **Dependencies**: Requires Terramate and OpenTofu available in workflow runner

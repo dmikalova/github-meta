@@ -1,0 +1,77 @@
+# Terramate Apply All - Reusable CI/CD Workflow
+#
+# Applies all non-manual Terramate stacks using OpenTofu with auto-approve.
+# Authenticates via WIF, decrypts SOPS secrets via Age key from Secret Manager.
+#
+# Usage in infrastructure repo:
+#   jobs:
+#     apply:
+#       uses: dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main
+#       secrets: inherit
+
+name: Terramate Apply All
+
+on:
+  workflow_call:
+
+# Hardcoded GCP configuration (convention over configuration)
+env:
+  GCP_PROJECT: mklv-infrastructure
+  GCP_REGION: us-west1
+  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_SERVICE_ACCOUNT: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
+
+jobs:
+  apply:
+    name: Apply Infrastructure
+    runs-on: ubuntu-latest
+    concurrency:
+      group: terramate-apply
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: GCP Auth
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: Fetch SOPS Age Key
+        run: |
+          SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project=${{ env.GCP_PROJECT }})
+          echo "::add-mask::$SOPS_AGE_KEY"
+          echo "SOPS_AGE_KEY=$SOPS_AGE_KEY" >> $GITHUB_ENV
+
+      - name: Install Terramate
+        uses: terramate-io/terramate-action@v2
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Apply All Stacks
+        run: terramate run --no-tags manual script run cicd
+
+      - name: NPM Cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-semantic-release-${{ runner.os }}
+
+      - name: Semantic Release
+        if: github.ref == 'refs/heads/main'
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extends: "@dmikalova/semantic-release-config"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
