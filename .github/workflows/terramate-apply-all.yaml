@@ -71,9 +71,8 @@ jobs:
       - name: Apply All Stacks
         run: |
           mkdir -p ~/.terraform.d/plugin-cache
-          terramate script run --no-tags=manual cicd
+          env -u GITHUB_TOKEN terramate script run --no-tags=manual cicd
         env:
-          GITHUB_TOKEN: ""
           TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
       - name: NPM Cache
