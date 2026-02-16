@@ -1,7 +1,7 @@
 ## 1. GCP Secret Manager Setup
 
 - [x] 1.1 Add `sops-age-key` Secret Manager secret resource in `gcp/infra/baseline/main.tf`, reading the Age private key from `secrets/age.sops.json` via SOPS provider (`keys_file_base64`, base64-decoded)
-- [ ] 1.2 Run `tofu apply` locally in `gcp/infra/baseline` and `gcp/infra/workload-identity-federation` to bootstrap (requires local Age key)
+- [x] 1.2 Run `tofu apply` locally in `gcp/infra/baseline` and `gcp/infra/workload-identity-federation` to bootstrap (requires local Age key)
 
 ## 2. IAM Bindings
 

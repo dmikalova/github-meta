@@ -46,8 +46,12 @@ jobs:
       - name: Fetch SOPS Age Key
         run: |
           SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project=${{ env.GCP_PROJECT }})
-          echo "::add-mask::$SOPS_AGE_KEY"
-          echo "SOPS_AGE_KEY=$SOPS_AGE_KEY" >> $GITHUB_ENV
+          echo "::add-mask::$(echo "$SOPS_AGE_KEY" | tail -1)"
+          {
+            echo "SOPS_AGE_KEY<<EOF"
+            echo "$SOPS_AGE_KEY"
+            echo "EOF"
+          } >> $GITHUB_ENV
 
       - name: Install Terramate
         uses: terramate-io/terramate-action@v2
