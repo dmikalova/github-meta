@@ -70,6 +70,7 @@ jobs:
 
       - name: Apply All Stacks
         run: |
+          mkdir -p ~/.terraform.d/plugin-cache
           terramate script run --no-tags=manual cicd
         env:
           GITHUB_TOKEN: ""
