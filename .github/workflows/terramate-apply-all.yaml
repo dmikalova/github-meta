@@ -61,8 +61,20 @@ jobs:
         with:
           tofu_wrapper: false
 
+      - name: Cache Terraform Providers
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: terraform-providers-
+
       - name: Apply All Stacks
-        run: unset GITHUB_TOKEN && terramate script run --no-tags=manual cicd
+        run: |
+          gh auth status
+          terramate script run --no-tags=manual cicd
+        env:
+          GITHUB_TOKEN: ""
+          TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
 
       - name: NPM Cache
         if: github.ref == 'refs/heads/main'
