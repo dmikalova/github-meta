@@ -33,4 +33,4 @@
 
 - [ ] 6.1 Push to main and verify the workflow triggers and applies successfully
 - [ ] 6.2 Verify manual-tagged stacks are skipped in the Actions log
-- [ ] 6.3 Trigger `workflow_dispatch` and verify it runs
+- [x] 6.3 Trigger `workflow_dispatch` and verify it runs

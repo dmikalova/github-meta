@@ -92,6 +92,12 @@ jobs:
           path: ~/.npm
           key: npm-semantic-release-${{ runner.os }}
 
+
+      - name: NPM Authn
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp .npmrc $HOME/.npmrc
+
       - name: Semantic Release
         if: github.ref == 'refs/heads/main'
         uses: cycjimmy/semantic-release-action@v4
