@@ -37,6 +37,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Necessary for Postgresql provider and Supabase
+      - name: Prefer IPv4
+        run:
+
       - name: GCP Auth
         uses: google-github-actions/auth@v2
         with:
@@ -52,12 +56,6 @@ jobs:
             echo "$SOPS_AGE_KEY"
             echo "EOF"
           } >> $GITHUB_ENV
-
-      - name: Install SOPS
-        run: |
-          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64"
-          chmod +x /tmp/sops
-          sudo mv /tmp/sops /usr/local/bin/sops
 
       - name: Install Terramate
         uses: terramate-io/terramate-action@v2
@@ -76,6 +74,9 @@ jobs:
 
       - name: Apply All Stacks
         run: |
+          # Prefer IPv4: Workaround for Postgresql provider and Supabase in GHA runners
+          echo 'precedence ::ffff:0:0/96 100' | sudo tee -a /etc/gai.conf
+
           export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
           export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
