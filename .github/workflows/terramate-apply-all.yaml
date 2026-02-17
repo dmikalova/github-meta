@@ -53,6 +53,12 @@ jobs:
             echo "EOF"
           } >> $GITHUB_ENV
 
+      - name: Install SOPS
+        run: |
+          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64"
+          chmod +x /tmp/sops
+          sudo mv /tmp/sops /usr/local/bin/sops
+
       - name: Install Terramate
         uses: terramate-io/terramate-action@v2
 
@@ -70,10 +76,10 @@ jobs:
 
       - name: Apply All Stacks
         run: |
-          mkdir -p ~/.terraform.d/plugin-cache
-          env -u GITHUB_TOKEN terramate script run --no-tags=manual cicd
-        env:
-          TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+          export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
+          export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          terramate script run --no-tags=manual cicd
 
       - name: NPM Cache
         if: github.ref == 'refs/heads/main'
