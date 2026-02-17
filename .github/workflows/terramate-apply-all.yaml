@@ -37,17 +37,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Necessary for Postgresql provider and Supabase
-      - name: Prefer IPv4
-        run:
-
       - name: GCP Auth
         uses: google-github-actions/auth@v2
         with:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Fetch SOPS Age Key
+      - name: OpenTofu Install
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: SOPS Install
+        uses: step-security/mozilla-sops-action@v1
+        id: install
+
+      - name: SOPS Get Age Key
         run: |
           SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project=${{ env.GCP_PROJECT }})
           echo "::add-mask::$(echo "$SOPS_AGE_KEY" | tail -1)"
@@ -57,28 +62,26 @@ jobs:
             echo "EOF"
           } >> $GITHUB_ENV
 
-      - name: Install Terramate
+      - name: Terramate Install
         uses: terramate-io/terramate-action@v2
 
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_wrapper: false
-
-      - name: Cache Terraform Providers
+      - name: Tofu Provider Cache
         uses: actions/cache@v4
         with:
-          path: ~/.terraform.d/plugin-cache
-          key: terraform-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
-          restore-keys: terraform-providers-
+          path: ~/.tofu.d/plugin-cache
+          key: tofu-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: tofu-providers-
 
-      - name: Apply All Stacks
+      - name: Terramate Apply All Stacks
         run: |
           # Prefer IPv4: Workaround for Postgresql provider and Supabase in GHA runners
           echo 'precedence ::ffff:0:0/96 100' | sudo tee -a /etc/gai.conf
 
+          # Override GITHUB_TOKEN with decrypted value from SOPS secrets
           export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
-          export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+
+          # Set cache directory for OpenTofu providers
+          export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
           terramate script run --no-tags=manual cicd
