@@ -77,7 +77,8 @@ jobs:
       - name: Terramate Apply All Stacks
         run: |
           # Prefer IPv4: Workaround for Postgresql provider and Supabase in GHA runners
-          echo 'precedence ::ffff:0:0/96 100' | sudo tee -a /etc/gai.conf
+          # Uncomment all default label/precedence rules, then raise IPv4 priority
+          sudo sed -i -e 's/^#\(label\)/\1/' -e 's/^#\(precedence\)/\1/' -e 's/^precedence ::ffff:0:0\/96  10$/precedence ::ffff:0:0\/96  100/' /etc/gai.conf
 
           # Override GITHUB_TOKEN with decrypted value from SOPS secrets
           export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
