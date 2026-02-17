@@ -79,10 +79,11 @@ jobs:
           # Prefer IPv4: Workaround for Postgresql provider and Supabase in GHA runners
           # Uncomment all default label/precedence rules, then raise IPv4 priority
           sudo sed -i -e 's/^#\(label\)/\1/' -e 's/^#\(precedence\)/\1/' -e 's/^precedence ::ffff:0:0\/96  10$/precedence ::ffff:0:0\/96  100/' /etc/gai.conf
+          # Force Go to use cgo resolver so it respects gai.conf
+          export GODEBUG=netdns=cgo
 
           # Override GITHUB_TOKEN with decrypted value from SOPS secrets
           export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
-          echo $GITHUB_TOKEN | base64
 
           # Set cache directory for OpenTofu providers
           export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
