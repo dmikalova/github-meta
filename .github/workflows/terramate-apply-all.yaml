@@ -49,8 +49,10 @@ jobs:
           tofu_wrapper: false
 
       - name: SOPS Install
-        uses: step-security/mozilla-sops-action@v1
-        id: install
+        run: |
+          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64"
+          chmod +x /tmp/sops
+          sudo mv /tmp/sops /usr/local/bin/sops
 
       - name: SOPS Get Age Key
         run: |
@@ -79,6 +81,7 @@ jobs:
 
           # Override GITHUB_TOKEN with decrypted value from SOPS secrets
           export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
+          echo $GITHUB_TOKEN | base64
 
           # Set cache directory for OpenTofu providers
           export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
