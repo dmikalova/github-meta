@@ -115,6 +115,13 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 - Prevents Atlas from touching Supabase system tables (`auth.*`, `storage.*`)
 - Clear ownership boundaries
 
+**Schema naming convention:** The PostgreSQL schema name is derived from the app name by replacing dashes with underscores. This matches the Terraform `supabase/app-database` module convention:
+
+- `login` → `login`
+- `email-unsubscribe` → `email_unsubscribe`
+
+**Important:** The database URL must include `?search_path=<schema_name>` (e.g., `?search_path=login`) to limit Atlas introspection to the app's schema. Without this, Atlas may encounter conflicts with Supabase system constraints. The workflow derives the schema name automatically from the app name.
+
 **Schema bootstrap:** The HCL file must explicitly declare the schema block so Atlas creates the PostgreSQL schema namespace if it doesn't exist:
 
 ```hcl
@@ -184,7 +191,6 @@ curl -sSf https://atlasgo.sh | sh
 **[Risk] Dev container adds ~10-20s to CI** → Acceptable overhead for schema-as-code benefits. Can optimize with Docker layer caching if needed.
 
 **[Risk] HCL learning curve** → Minor friction. HCL syntax is straightforward and well-documented.
-
 
 **[Risk] Atlas version drift** → `setup-atlas@v0` may pull different versions over time. Mitigation: Pin to specific version if issues arise.
 

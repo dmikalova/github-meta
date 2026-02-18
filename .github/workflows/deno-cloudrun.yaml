@@ -157,6 +157,10 @@ jobs:
             exit 0
           fi
 
+          # Schema name matches Terraform convention: replace dashes with underscores
+          schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
+          echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
+
           # Fetch DATABASE_URL from Secret Manager
           secret_name="${{ steps.info.outputs.name }}-database-url"
           DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
@@ -171,7 +175,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
         run: |
           atlas schema diff \
-            --from "${{ steps.schema.outputs.database_url }}" \
+            --from "${{ steps.schema.outputs.database_url }}?search_path=${{ steps.schema.outputs.schema_name }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
             --format '{{ sql . "  " }}' > /tmp/migration.sql
@@ -189,7 +193,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
         run: |
           atlas schema apply \
-            --url "${{ steps.schema.outputs.database_url }}" \
+            --url "${{ steps.schema.outputs.database_url }}?search_path=${{ steps.schema.outputs.schema_name }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
             --auto-approve
