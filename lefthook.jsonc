@@ -39,13 +39,13 @@
 
       "typos": {
         "glob": "*.{ts,tsx,js,jsx,json,yaml,yml,md}",
-        "run": "typos -w .",
+        "run": "typos -w --exclude node_modules .",
         "stage_fixed": true
       },
 
       "markdownlint": {
         "glob": "*.md",
-        "run": "markdownlint --fix --dot .",
+        "run": "echo '{\"MD013\": {\"line_length\": 100}}' > /tmp/.markdownlint-config.json && markdownlint --config /tmp/.markdownlint-config.json --fix --dot --ignore node_modules --ignore LICENSE.md .",
         "stage_fixed": true
       },
 

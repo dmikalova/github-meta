@@ -1,3 +1,5 @@
+# Atlas Schema Workflow
+
 ## Requirements
 
 ### Requirement: Schema defined in HCL
@@ -12,7 +14,8 @@ The app SHALL define its database schema in a declarative HCL file.
 #### Scenario: Schema scoped to app
 
 - **WHEN** defining the schema
-- **THEN** the schema SHALL only define tables in the app's dedicated PostgreSQL schema (e.g., `login`, `email_unsubscribe`)
+- **THEN** the schema SHALL only define tables in the app's dedicated PostgreSQL schema (e.g.,
+  `login`, `email_unsubscribe`)
 
 ### Requirement: Atlas runnable locally
 
@@ -117,4 +120,5 @@ The workflow SHALL fetch the database connection string from GCP Secret Manager.
 #### Scenario: Service account has access
 
 - **WHEN** the workflow fetches the secret
-- **THEN** the GitHub Actions deploy service account has `secretmanager.secretAccessor` role on the secret
+- **THEN** the GitHub Actions deploy service account has `secretmanager.secretAccessor` role on the
+  secret

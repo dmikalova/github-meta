@@ -35,8 +35,8 @@ When adding tasks to `deno.jsonc`:
     "start": "deno run --permission-set src/main.ts",
 
     // Scripts that need specific permissions can declare them
-    "migrate": "deno run --allow-env --allow-net --allow-read scripts/migrate.ts",
-  },
+    "migrate": "deno run --allow-env --allow-net --allow-read scripts/migrate.ts"
+  }
 }
 ```
 

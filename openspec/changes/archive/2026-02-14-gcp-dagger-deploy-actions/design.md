@@ -1,6 +1,11 @@
+# Design
+
 ## Context
 
-New `dmikalova/github-meta` repo to host reusable CI/CD infrastructure for Deno apps deploying to GCP Cloud Run. Currently email-unsubscribe has placeholder workflows calling non-existent infrastructure. All Deno apps should use identical CI/CD patterns with minimal per-repo configuration.
+New `dmikalova/github-meta` repo to host reusable CI/CD infrastructure for Deno apps deploying to
+GCP Cloud Run. Currently email-unsubscribe has placeholder workflows calling non-existent
+infrastructure. All Deno apps should use identical CI/CD patterns with minimal per-repo
+configuration.
 
 Dependencies:
 
@@ -28,9 +33,10 @@ Dependencies:
 
 ### 1. Repository Structure
 
-**Decision:** `dagger/deno/` module with reusable workflow at `.github/workflows/deno-cloudrun.yaml`.
+**Decision:** `dagger/deno/` module with reusable workflow at
+`.github/workflows/deno-cloudrun.yaml`.
 
-```
+```text
 github-meta/
 ├── .github/
 │   └── workflows/
@@ -45,7 +51,8 @@ github-meta/
 └── README.md
 ```
 
-**Rationale:** Centralized CI/CD logic. App repos stay clean - changes to build process don't require updating every app repo.
+**Rationale:** Centralized CI/CD logic. App repos stay clean - changes to build process don't
+require updating every app repo.
 
 ### 2. Container Build Strategy
 
@@ -55,18 +62,18 @@ github-meta/
 // Build stage: compile to standalone binary
 const builder = dag
   .container()
-  .from("denoland/deno:2.1.0")
-  .withDirectory("/app", source)
-  .withWorkdir("/app")
-  .withExec(["deno", "compile", "--output", "app", entrypoint]);
+  .from('denoland/deno:2.1.0')
+  .withDirectory('/app', source)
+  .withWorkdir('/app')
+  .withExec(['deno', 'compile', '--output', 'app', entrypoint]);
 
 // Runtime stage: minimal distroless (~20MB total)
 return dag
   .container()
-  .from("gcr.io/distroless/cc-debian12")
-  .withFile("/app", builder.file("/app/app"))
+  .from('gcr.io/distroless/cc-debian12')
+  .withFile('/app', builder.file('/app/app'))
   .withExposedPort(8000)
-  .withEntrypoint(["/app"]);
+  .withEntrypoint(['/app']);
 ```
 
 **Alternatives considered:**
@@ -75,13 +82,14 @@ return dag
 - Alpine + Deno: Still needs runtime, ~150MB
 - Cloud Run source deploy: Less control, slower builds
 
-**Rationale:** Smallest possible image. Single static binary with no runtime dependencies. Fast cold starts. Secure (no shell, no package manager).
+**Rationale:** Smallest possible image. Single static binary with no runtime dependencies. Fast cold
+starts. Secure (no shell, no package manager).
 
 ### 3. Container Registry
 
 **Decision:** GitHub Container Registry (ghcr.io).
 
-```
+```text
 ghcr.io/dmikalova/email-unsubscribe:1.2.3
 ```
 
@@ -90,7 +98,8 @@ ghcr.io/dmikalova/email-unsubscribe:1.2.3
 - GCP Artifact Registry: Requires auth, costs money
 - Docker Hub: Rate limits, less GitHub integration
 
-**Rationale:** Free for public repos, integrated with GitHub auth, Cloud Run can pull public images directly.
+**Rationale:** Free for public repos, integrated with GitHub auth, Cloud Run can pull public images
+directly.
 
 ### 4. Database Migrations
 
@@ -128,14 +137,15 @@ async migrate(source: Directory, databaseUrl: Secret): Promise<string> {
 
 **Decision:** semantic-release with conventional commits.
 
-```
+```text
 feat: add new feature    → 1.x.0 (minor)
 fix: bug fix             → 1.0.x (patch)
 feat!: breaking change   → x.0.0 (major)
 chore: maintenance       → no release
 ```
 
-**Rationale:** Automatic versioning from commit messages. Creates GitHub releases with changelogs. App repos already use conventional commits.
+**Rationale:** Automatic versioning from commit messages. Creates GitHub releases with changelogs.
+App repos already use conventional commits.
 
 ### 6. Deno Task Conventions
 
@@ -162,11 +172,13 @@ chore: maintenance       → no release
 
 - `db:migrate`: Database migrations (skipped if not present)
 
-**Rationale:** Standardized interface. Pipeline calls these tasks, doesn't need app-specific knowledge.
+**Rationale:** Standardized interface. Pipeline calls these tasks, doesn't need app-specific
+knowledge.
 
 ### 7. App Configuration Schema
 
-**Decision:** App repos define `mklv.config.mts` with only app runtime concerns. The pipeline derives GCP settings from conventions.
+**Decision:** App repos define `mklv.config.mts` with only app runtime concerns. The pipeline
+derives GCP settings from conventions.
 
 ```typescript
 // github-meta/src/schema.ts - published as @dmikalova/mklv-config
@@ -187,14 +199,14 @@ export interface MklvConfig {
 
 ```typescript
 // email-unsubscribe/mklv.config.mts
-import type { MklvConfig } from "@dmikalova/mklv-config";
+import type { MklvConfig } from '@dmikalova/mklv-config';
 
 export default {
-  name: "email-unsubscribe",
-  entrypoint: "src/main.ts",
+  name: 'email-unsubscribe',
+  entrypoint: 'src/main.ts',
   runtime: {
     port: 8000,
-    healthCheckPath: "/health",
+    healthCheckPath: '/health',
   },
 } satisfies MklvConfig;
 ```
@@ -232,7 +244,8 @@ jobs:
     secrets: inherit
 ```
 
-**No inputs required** - Dagger reads `mklv.config.mts` for app settings, uses hardcoded GCP conventions.
+**No inputs required** - Dagger reads `mklv.config.mts` for app settings, uses hardcoded GCP
+conventions.
 
 The reusable workflow:
 
@@ -264,11 +277,11 @@ The reusable workflow:
 
 ### Phase 2: email-unsubscribe Migration
 
-6. Create `mklv.config.mts` with GCP/WIF settings
-7. Replace `.github/workflows/ci.yaml` with reusable workflow call
-8. Delete `.github/workflows/deploy.yml` (Northflank)
-9. Delete `deploy.config.ts` (superseded by mklv.config.mts)
-10. Push to trigger first automated pipeline
+1. Create `mklv.config.mts` with GCP/WIF settings
+2. Replace `.github/workflows/ci.yaml` with reusable workflow call
+3. Delete `.github/workflows/deploy.yml` (Northflank)
+4. Delete `deploy.config.ts` (superseded by mklv.config.mts)
+5. Push to trigger first automated pipeline
 
 ## Open Questions
 

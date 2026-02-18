@@ -1,3 +1,5 @@
+# Design
+
 ## Context
 
 Currently, code quality checks run only in CI after commits are pushed. This means:
@@ -34,7 +36,7 @@ Terraform, etc.).
 
 ### Decision: Use lefthook over Husky
 
-**Choice:** lefthook (https://github.com/evilmartians/lefthook)
+**Choice:** lefthook (<https://github.com/evilmartians/lefthook>)
 
 **Rationale:**
 
@@ -136,7 +138,7 @@ Mitigation: Parallel execution, caching where tools support it, tests are fast. 
 consistency - same as CI.
 
 **[Trade-off] Strict blocking vs warnings** → Chose strict blocking for quality. Developers can
-`--no-verify` for emergencies, but this is intentionally friction-ful.
+`--no-verify` for emergencies, but this is intentionally friction-full.
 
 **[Trade-off] All files vs staged only** → Chose all files for CI parity. Staged-only could miss
 issues introduced by unstaged changes that interact with staged ones.

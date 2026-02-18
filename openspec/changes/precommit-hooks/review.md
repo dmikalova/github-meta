@@ -1,3 +1,5 @@
+# Review
+
 ## Summary
 
 The design is solid - lefthook is the right choice, auto-detection approach is pragmatic, and the
@@ -45,7 +47,7 @@ scope, and Node.js repo support are noted below.
       in tasks.**
 - [x] **Spell checking** → Add `typos` for fast code spell checking. **Address in tasks.**
 - [x] **Markdown linting** → Add `markdownlint` for documentation quality. **Address in tasks.**
-- [x] **Insensitive writing check** → Add `alex` to catch insensitive/inconsiderate language.
+- [x] **Insensitive writing check** → Add `alex` to catch insensitive/ inconsiderate language.
       **Address in tasks.**
 - [x] **Code spell checking** → Add `cspell` for code-aware dictionaries. **Address in tasks.**
 - [x] **Merge conflict detection** → Check for unresolved merge markers. **Address in tasks.**

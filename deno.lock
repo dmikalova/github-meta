@@ -12,6 +12,9 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@commitlint/cli@19",
+        "npm:@commitlint/config-conventional@19",
+        "npm:lefthook@^2.1.1",
         "npm:typescript@^5.3.0"
       ]
     }

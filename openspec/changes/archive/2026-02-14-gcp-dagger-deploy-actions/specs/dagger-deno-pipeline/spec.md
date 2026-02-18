@@ -1,3 +1,5 @@
+# Dagger Deno Pipeline
+
 ## ADDED Requirements
 
 ### Requirement: Pipeline provides lint function
@@ -16,7 +18,8 @@ The Dagger module SHALL provide a `lint` function that runs `deno lint` on the s
 
 ### Requirement: Pipeline provides check function
 
-The Dagger module SHALL provide a `check` function that runs `deno check` for TypeScript type checking.
+The Dagger module SHALL provide a `check` function that runs `deno check` for TypeScript type
+checking.
 
 #### Scenario: Type check passes
 
@@ -44,7 +47,8 @@ The Dagger module SHALL provide a `test` function that runs `deno task test`.
 
 ### Requirement: Pipeline provides build function
 
-The Dagger module SHALL provide a `build` function that compiles the Deno app to a standalone binary and packages it in a minimal container.
+The Dagger module SHALL provide a `build` function that compiles the Deno app to a standalone binary
+and packages it in a minimal container.
 
 #### Scenario: Build produces container
 

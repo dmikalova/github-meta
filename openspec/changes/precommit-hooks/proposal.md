@@ -1,3 +1,5 @@
+# Proposal
+
 ## Why
 
 Commits with lint errors, formatting issues, or failing tests waste CI time and create noisy git

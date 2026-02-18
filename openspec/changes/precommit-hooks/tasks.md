@@ -1,3 +1,5 @@
+# Tasks
+
 ## 1. Base Configuration
 
 - [ ] 1.1 Create `lefthook-base.yml` in github-meta root with general checks

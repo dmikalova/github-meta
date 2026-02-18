@@ -1,6 +1,11 @@
+# Proposal
+
 ## Why
 
-The infrastructure repository has no automated deployment - all Terraform/OpenTofu changes must be applied manually. This creates risk of drift, forgotten applies, and inconsistent state. A reusable workflow would enable automated infrastructure deployment with proper versioning, similar to the existing deno-cloudrun workflow for applications.
+The infrastructure repository has no automated deployment - all Terraform/ OpenTofu changes must be
+applied manually. This creates risk of drift, forgotten applies, and inconsistent state. A reusable
+workflow would enable automated infrastructure deployment with proper versioning, similar to the
+existing deno-cloudrun workflow for applications.
 
 ## What Changes
 
@@ -14,7 +19,8 @@ The infrastructure repository has no automated deployment - all Terraform/OpenTo
 
 ### New Capabilities
 
-- `terramate-workflow`: Reusable GitHub Actions workflow for Terramate/OpenTofu infrastructure deployment with plan on PR, apply on merge, and scheduled drift detection
+- `terramate-workflow`: Reusable GitHub Actions workflow for Terramate/OpenTofu infrastructure
+  deployment with plan on PR, apply on merge, and scheduled drift detection
 
 ### Modified Capabilities
 
@@ -24,5 +30,6 @@ The infrastructure repository has no automated deployment - all Terraform/OpenTo
 
 - **github-meta**: New workflow file `.github/workflows/terramate-apply-all.yaml`
 - **infrastructure repo**: Will add `.github/workflows/cicd.yaml` that calls the reusable workflow
-- **GCP**: Uses existing Workload Identity Federation setup and `github-actions-deploy` service account that is accessible via the infra-deploy topic on the repo
+- **GCP**: Uses existing Workload Identity Federation setup and `github-actions-deploy` service
+  account that is accessible via the infra-deploy topic on the repo
 - **Dependencies**: Requires Terramate and OpenTofu available in workflow runner

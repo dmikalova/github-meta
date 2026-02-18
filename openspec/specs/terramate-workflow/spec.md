@@ -2,17 +2,21 @@
 
 ## Purpose
 
-Reusable GitHub Actions workflow for applying Terramate + OpenTofu infrastructure stacks. Authenticates to GCP via Workload Identity Federation, decrypts secrets with SOPS/Age, and runs `terramate script run cicd` to apply all non-manual stacks.
+Reusable GitHub Actions workflow for applying Terramate + OpenTofu infrastructure stacks.
+Authenticates to GCP via Workload Identity Federation, decrypts secrets with SOPS/Age, and runs
+`terramate script run cicd` to apply all non-manual stacks.
 
 ## Requirements
 
 ### Requirement: Workflow is reusable
 
-The workflow SHALL be defined as a reusable workflow (`workflow_call`) in the github-meta repo at `.github/workflows/terramate-apply-all.yaml`, callable from other repos with `secrets: inherit`.
+The workflow SHALL be defined as a reusable workflow (`workflow_call`) in github-meta at
+`.github/workflows/terramate-apply-all.yaml`, callable from other repos with `secrets: inherit`.
 
 #### Scenario: Called from infrastructure repo
 
-- **WHEN** the infrastructure repo workflow uses `dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main`
+- **WHEN** the infrastructure repo workflow uses
+  `dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main`
 - **THEN** the workflow executes in the context of the calling repo
 
 ### Requirement: Workflow triggers on push, schedule, and manual dispatch
@@ -36,7 +40,8 @@ The caller workflow SHALL trigger on push to main, weekly cron schedule, and man
 
 ### Requirement: Workflow authenticates to GCP via WIF
 
-The workflow SHALL authenticate to GCP using Workload Identity Federation with the `github-actions-infra` service account.
+The workflow SHALL authenticate to GCP using Workload Identity Federation with the
+`github-actions-infra` service account.
 
 #### Scenario: WIF authentication succeeds
 
@@ -46,16 +51,19 @@ The workflow SHALL authenticate to GCP using Workload Identity Federation with t
 #### Scenario: Impersonation chain to tofu-ci
 
 - **WHEN** OpenTofu runs with providers configured to `impersonate_service_account = tofu-ci`
-- **THEN** `github-actions-infra` impersonates `tofu-ci` via `roles/iam.serviceAccountTokenCreator`
+- **THEN** `github-actions-infra` impersonates `tofu-ci` via the
+  `roles/iam.serviceAccountTokenCreator` role
 
 ### Requirement: Age key managed in OpenTofu via SOPS provider
 
-The `sops-age-key` Secret Manager secret SHALL be managed in OpenTofu, with its value read from `secrets/age.sops.json` via the SOPS provider. This bootstraps CI access after a single local apply.
+The `sops-age-key` Secret Manager secret SHALL be managed in OpenTofu, with its value read from
+`secrets/age.sops.json` via the SOPS provider. This bootstraps CI access after a single local apply.
 
 #### Scenario: Secret created from SOPS-encrypted source
 
 - **WHEN** `tofu apply` runs in the baseline stack (locally, with the Age key available)
-- **THEN** the Age private key is read from `age.sops.json` (`keys_file_base64`, base64-decoded) and stored in Secret Manager as `sops-age-key`
+- **THEN** the Age private key is read from `age.sops.json` (`keys_file_base64`, base64-decoded) and
+  stored in Secret Manager as `sops-age-key`
 
 #### Scenario: Key rotation via SOPS
 
@@ -64,7 +72,8 @@ The `sops-age-key` Secret Manager secret SHALL be managed in OpenTofu, with its 
 
 ### Requirement: Workflow retrieves SOPS Age key from GCP Secret Manager
 
-The workflow SHALL fetch the Age private key from GCP Secret Manager and export it as `SOPS_AGE_KEY` for SOPS decryption.
+The workflow SHALL fetch the Age private key from GCP Secret Manager and export it as `SOPS_AGE_KEY`
+for SOPS decryption.
 
 #### Scenario: Age key retrieved successfully
 
@@ -96,12 +105,14 @@ The workflow SHALL install Terramate and OpenTofu CLI tools.
 
 ### Requirement: Workflow runs Terramate cicd script excluding manual stacks
 
-The workflow SHALL execute `terramate run --no-tags manual script run cicd` to apply all non-manual stacks with auto-approve.
+The workflow SHALL execute `terramate run --no-tags manual script run cicd` to apply all non-manual
+stacks with auto-approve.
 
 #### Scenario: All non-manual stacks applied
 
 - **WHEN** the workflow runs the cicd script
-- **THEN** every stack without the `manual` tag runs `tofu init` followed by `tofu apply -auto-approve`
+- **THEN** every stack without the `manual` tag runs `tofu init` followed by
+  `tofu apply -auto-approve`
 
 #### Scenario: Manual-tagged stacks skipped
 
@@ -110,12 +121,14 @@ The workflow SHALL execute `terramate run --no-tags manual script run cicd` to a
 
 ### Requirement: Terramate cicd script exists
 
-The infrastructure repo SHALL define a Terramate script named `cicd` that runs `tofu init` and `tofu apply -auto-approve`.
+The infrastructure repo SHALL define a Terramate script named `cicd` that runs `tofu init` and
+`tofu apply -auto-approve`.
 
 #### Scenario: cicd script runs non-interactively
 
 - **WHEN** `terramate script run cicd` is invoked
-- **THEN** it executes `tofu init` followed by `tofu apply -auto-approve` without interactive prompts
+- **THEN** it executes `tofu init` followed by `tofu apply -auto-approve` without interactive
+  prompts
 
 #### Scenario: Existing apply script unchanged
 
@@ -124,7 +137,8 @@ The infrastructure repo SHALL define a Terramate script named `cicd` that runs `
 
 ### Requirement: Workflow uses concurrency control
 
-The workflow SHALL use GitHub Actions concurrency groups to prevent parallel applies, with no cancellation of in-progress runs.
+The workflow SHALL use GitHub Actions concurrency groups to prevent parallel applies, with no
+cancellation of in-progress runs.
 
 #### Scenario: Concurrent runs queue
 
@@ -152,7 +166,8 @@ The workflow SHALL run semantic-release after successful apply to version infras
 
 ### Requirement: GitHub provider authenticates via SOPS
 
-The GitHub Terraform provider SHALL get its token from SOPS (`secrets/github.sops.json`), not from `GITHUB_TOKEN` or separate PAT.
+The GitHub Terraform provider SHALL get its token from SOPS (`secrets/github.sops.json`), not from
+`GITHUB_TOKEN` or separate PAT.
 
 #### Scenario: GitHub provider uses SOPS token
 

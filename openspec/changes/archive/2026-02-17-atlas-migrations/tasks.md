@@ -1,6 +1,9 @@
+# Tasks
+
 ## 1. Infrastructure
 
-- [x] 1.1 Verify GitHub Actions deploy SA has `secretmanager.secretAccessor` on `login-database-url` secret
+- [x] 1.1 Verify GitHub Actions deploy SA has `secretmanager.secretAccessor` on `login-database-url`
+      secret
 - [x] 1.2 Run `tofu plan` in `gcp/apps/login` to confirm no changes needed
 
 ## 2. Reusable Workflow

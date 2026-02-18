@@ -1,3 +1,5 @@
+# Reusable Workflow
+
 ## MODIFIED Requirements
 
 ### Requirement: Workflow passes secrets to Dagger
@@ -18,7 +20,8 @@ The workflow SHALL pass required secrets (GITHUB_TOKEN, DATABASE_URL) to the Dag
 
 ### Requirement: Workflow uses deno task migrate
 
-**Reason**: Replaced by Atlas declarative schema management. Sequential migration files are replaced by schema-as-code with automatic diffing.
+**Reason**: Replaced by Atlas declarative schema management. Sequential migration files are replaced
+by schema-as-code with automatic diffing.
 
 **Migration**: Apps should:
 

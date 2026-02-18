@@ -1,6 +1,9 @@
+# Proposal
+
 ## Why
 
-Deno apps need automated CI/CD to GCP Cloud Run. Currently email-unsubscribe has placeholder workflows calling non-existent infrastructure. Need a reusable, opinionated pipeline that:
+Deno apps need automated CI/CD to GCP Cloud Run. Currently email-unsubscribe has placeholder
+workflows calling non-existent infrastructure. Need a reusable, opinionated pipeline that:
 
 - Standardizes CI/CD across all Deno apps
 - Deploys to Cloud Run with keyless WIF authentication
@@ -33,7 +36,8 @@ None - github-meta is a new repo.
 
 ## Impact
 
-- **github-meta repo**: New Dagger module at `dagger/deno/`, reusable workflow at `.github/workflows/deno-cloudrun.yaml`
+- **github-meta repo**: New Dagger module at `dagger/deno/`, reusable workflow at
+  `.github/workflows/deno-cloudrun.yaml`
 - **App repos**: Replace existing workflows with single reusable workflow call
 - **Cloud Run**: Receives deployments via Dagger + gcloud
 - **GHCR**: Public images at `ghcr.io/dmikalova/<app-name>`

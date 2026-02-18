@@ -1,8 +1,13 @@
+# Design
+
 ## Context
 
-Currently, database migrations use a sequential file approach (`migrations/001_*.sql`, `migrations/002_*.sql`) with a custom Deno runner script. This scatters schema history across many files, making it hard to understand "what is the schema now?"
+Currently, database migrations use a sequential file approach (`migrations/001_*.sql`,
+`migrations/002_*.sql`) with a custom Deno runner script. This scatters schema history across many
+files, making it hard to understand "what is the schema now?"
 
-Atlas provides declarative schema-as-code where a single HCL file defines the desired schema state. Atlas diffs this against the production database and generates/applies migrations automatically.
+Atlas provides declarative schema-as-code where a single HCL file defines the desired schema state.
+Atlas diffs this against the production database and generates/applies migrations automatically.
 
 **Current state:**
 
@@ -42,7 +47,8 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 **Rationale:**
 
 - Full control over CLI flags, especially `--schema` for Supabase schema isolation
-- The `ariga/atlas-action` doesn't expose the `--schema` flag needed to avoid Supabase system table conflicts
+- The `ariga/atlas-action` doesn't expose the `--schema` flag needed to avoid Supabase system table
+  conflicts
 - Three-step workflow (inspect, diff, apply) provides better visibility into what's happening
 - Diff step can check for destructive changes via `--lint` flag
 
@@ -83,7 +89,8 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 
 ### Decision: Lint blocks destructive changes, auto-approve safe changes
 
-**Choice:** Run `atlas schema lint` before apply. Lint fails on destructive changes, blocking CI. Safe changes auto-apply.
+**Choice:** Run `atlas schema lint` before apply. Lint fails on destructive changes, blocking CI.
+Safe changes auto-apply.
 
 **Rationale:**
 
@@ -114,14 +121,19 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 - Prevents Atlas from touching Supabase system tables (`auth.*`, `storage.*`)
 - Clear ownership boundaries
 
-**Schema naming convention:** The PostgreSQL schema name is derived from the app name by replacing dashes with underscores. This matches the Terraform `supabase/app-database` module convention:
+**Schema naming convention:** The PostgreSQL schema name is derived from the app name by replacing
+dashes with underscores. This matches the Terraform `supabase/app-database` module convention:
 
 - `login` → `login`
 - `email-unsubscribe` → `email_unsubscribe`
 
-**Important:** Atlas commands must use `--schema <schema_name>` (e.g., `--schema login`) to limit introspection to the app's schema. Without this, Atlas introspects all schemas and may encounter conflicts with Supabase system constraints. The workflow derives the schema name automatically from the app name.
+**Important:** Atlas commands must use `--schema <schema_name>` (e.g., `--schema login`) to limit
+introspection to the app's schema. Without this, Atlas introspects all schemas and may encounter
+conflicts with Supabase system constraints. The workflow derives the schema name automatically from
+the app name.
 
-**Schema bootstrap:** The HCL file must explicitly declare the schema block so Atlas creates the PostgreSQL schema namespace if it doesn't exist:
+**Schema bootstrap:** The HCL file must explicitly declare the schema block so Atlas creates the
+PostgreSQL schema namespace if it doesn't exist:
 
 ```hcl
 schema "login" {
@@ -153,7 +165,8 @@ DATABASE_URL=... deno task db:diff
 DATABASE_URL=... deno task db:apply
 ```
 
-**Prerequisites:** Atlas CLI must be installed locally. Add installation instructions to app READMEs:
+**Prerequisites:** Atlas CLI must be installed locally. Add installation instructions to app
+READMEs:
 
 ```bash
 # macOS
@@ -185,18 +198,22 @@ curl -sSf https://atlasgo.sh | sh
 
 ## Risks / Trade-offs
 
-**[Risk] Destructive changes applied accidentally** → Mitigated by atlas lint blocking destructive changes in CI. Manual local apply required for intentional drops.
+**[Risk] Destructive changes applied accidentally** → Mitigated by atlas lint blocking destructive
+changes in CI. Manual local apply required for intentional drops.
 
-**[Risk] Dev container adds ~10-20s to CI** → Acceptable overhead for schema-as-code benefits. Can optimize with Docker layer caching if needed.
+**[Risk] Dev container adds ~10-20s to CI** → Acceptable overhead for schema-as-code benefits. Can
+optimize with Docker layer caching if needed.
 
 **[Risk] HCL learning curve** → Minor friction. HCL syntax is straightforward and well-documented.
 
-**[Risk] Atlas version drift** → `setup-atlas@v0` may pull different versions over time. Mitigation: Pin to specific version if issues arise.
+**[Risk] Atlas version drift** → `setup-atlas@v0` may pull different versions over time. Mitigation:
+Pin to specific version if issues arise.
 
 ## Migration Plan
 
 1. **Infrastructure** (first)
-   - Verify GitHub Actions deploy SA has `secretmanager.secretAccessor` on `login-database-url` secret
+   - Verify GitHub Actions deploy SA has `secretmanager.secretAccessor` on `login-database-url`
+     secret
    - Run `tofu apply` in `gcp/apps/login` if needed
 
 2. **github-meta** (second)
@@ -224,4 +241,5 @@ curl -sSf https://atlasgo.sh | sh
 2. Fix the schema.hcl error locally
 3. Test with `deno task db:diff` to verify the fix
 4. Push again to retry the deploy
-5. If database is in inconsistent state, connect manually and fix with SQL, then update schema.hcl to match
+5. If database is in inconsistent state, connect manually and fix with SQL, then update schema.hcl
+   to match

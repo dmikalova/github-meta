@@ -20,6 +20,7 @@ Create `lefthook.jsonc`:
     {
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
+      "refetch": true,
       "configs": ["lefthook.jsonc"]
     }
   ]
@@ -52,6 +53,7 @@ Create `lefthook.jsonc`:
     {
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
+      "refetch": true,
       "configs": ["lefthook.jsonc"]
     }
   ]
@@ -86,6 +88,7 @@ Create `lefthook.jsonc` in the repo root:
     {
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
+      "refetch": true,
       "configs": ["lefthook.jsonc"]
     }
   ]

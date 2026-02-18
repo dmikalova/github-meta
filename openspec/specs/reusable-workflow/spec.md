@@ -1,3 +1,5 @@
+# Reusable Workflow
+
 ## ADDED Requirements
 
 ### Requirement: Workflow is reusable
@@ -6,7 +8,8 @@ The workflow SHALL be defined as a reusable workflow that other repos can call w
 
 #### Scenario: Called from app repo
 
-- **WHEN** an app repo workflow uses `dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main`
+- **WHEN** an app repo workflow uses
+  `dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main`
 - **THEN** the workflow executes in the context of the calling repo
 
 ### Requirement: Workflow checks out source
@@ -20,7 +23,8 @@ The workflow SHALL check out the calling repository's source code.
 
 ### Requirement: Workflow authenticates to GCP via WIF
 
-The workflow SHALL authenticate to GCP using Workload Identity Federation with hardcoded provider and service account.
+The workflow SHALL authenticate to GCP using Workload Identity Federation with hardcoded provider
+and service account.
 
 #### Scenario: WIF authentication succeeds
 
