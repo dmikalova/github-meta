@@ -35,22 +35,21 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 
 ## Decisions
 
-### Decision: Use Atlas GitHub Action
+### Decision: Use Atlas CLI with setup-atlas action
 
-**Choice:** Use `ariga/atlas-action/schema/apply@v1` action for schema operations.
+**Choice:** Use `ariga/setup-atlas@v0` to install Atlas, then run manual `atlas schema` commands.
 
 **Rationale:**
 
-- Maintained by Atlas team, follows their best practices
-- Bundles Atlas installation + schema apply in one step
-- Handles dev container lifecycle automatically
-- Less custom workflow YAML to maintain
-- Automatically picks up improvements in new action versions
+- Full control over CLI flags, especially `--schema` for Supabase schema isolation
+- The `ariga/atlas-action` doesn't expose the `--schema` flag needed to avoid Supabase system table conflicts
+- Three-step workflow (inspect, diff, apply) provides better visibility into what's happening
+- Diff step can check for destructive changes via `--lint` flag
 
 **Alternatives considered:**
 
-- Direct CLI with `setup-atlas` + manual `atlas schema apply` - More control but no concrete customization needed
-- Dagger integration - Adds complexity, action is simpler
+- `ariga/atlas-action/schema/apply@v1` - Bundles everything but lacks `--schema` flag control
+- Dagger integration - Adds complexity, GitHub Actions workflow is simpler
 
 ### Decision: Use HCL schema format (not SQL)
 

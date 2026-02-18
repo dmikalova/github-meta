@@ -50,10 +50,10 @@ The workflow SHALL pass required secrets (GITHUB_TOKEN, DATABASE_URL) to the Dag
 - **WHEN** Dagger needs to push to GHCR
 - **THEN** GITHUB_TOKEN is available as a Dagger secret
 
-#### Scenario: Database URL available for migrations
+#### Scenario: Database URL fetched for Atlas
 
-- **WHEN** Dagger needs to run migrations
-- **THEN** DATABASE_URL is available as a Dagger secret
+- **WHEN** Atlas needs to apply schema changes
+- **THEN** DATABASE_URL is fetched from GCP Secret Manager using `gcloud secrets versions access`
 
 ### Requirement: Workflow triggers on main branch push
 

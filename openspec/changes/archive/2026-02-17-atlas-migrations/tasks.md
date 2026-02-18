@@ -21,6 +21,6 @@
 
 ## 4. Testing
 
-- [ ] 4.1 Test workflow in a branch with login app deploy
-- [ ] 4.2 Verify Atlas logs planned changes before applying
-- [ ] 4.3 Verify lint blocks destructive changes (test with DROP COLUMN)
+- [x] 4.1 Test workflow in a branch with login app deploy
+- [x] 4.2 Verify Atlas logs planned changes before applying
+- [x] 4.3 Verify lint blocks destructive changes (test with DROP COLUMN)
