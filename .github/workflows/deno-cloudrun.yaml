@@ -146,6 +146,23 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
+      - name: Database Migrate
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Check if migrate task exists in deno.jsonc
+          if ! deno eval "const c=JSON.parse(Deno.readTextFileSync('deno.jsonc')); if(!c.tasks?.migrate) Deno.exit(1);" 2>/dev/null; then
+            echo "No migrate task defined, skipping migrations"
+            exit 0
+          fi
+
+          # Fetch DATABASE_URL from Secret Manager
+          secret_name="${{ steps.info.outputs.name }}-database-url"
+          DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+
+          # Run migrations
+          echo "Running database migrations..."
+          DATABASE_URL="$DATABASE_URL" deno task migrate
+
       - name: Cloud Run Deploy
         if: github.ref == 'refs/heads/main'
         run: |
