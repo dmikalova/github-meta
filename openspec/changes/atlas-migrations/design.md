@@ -120,7 +120,7 @@ Atlas provides declarative schema-as-code where a single HCL file defines the de
 - `login` → `login`
 - `email-unsubscribe` → `email_unsubscribe`
 
-**Important:** The database URL must include `?search_path=<schema_name>` (e.g., `?search_path=login`) to limit Atlas introspection to the app's schema. Without this, Atlas may encounter conflicts with Supabase system constraints. The workflow derives the schema name automatically from the app name.
+**Important:** Atlas commands must use `--schema <schema_name>` (e.g., `--schema login`) to limit introspection to the app's schema. Without this, Atlas introspects all schemas and may encounter conflicts with Supabase system constraints. The workflow derives the schema name automatically from the app name.
 
 **Schema bootstrap:** The HCL file must explicitly declare the schema block so Atlas creates the PostgreSQL schema namespace if it doesn't exist:
 

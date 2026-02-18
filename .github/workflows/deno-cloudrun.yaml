@@ -174,10 +174,19 @@ jobs:
       - name: Atlas Schema Check
         if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
         run: |
+          echo "=== Debugging: Inspecting database schema '${{ steps.schema.outputs.schema_name }}' ==="
+          atlas schema inspect \
+            --url "${{ steps.schema.outputs.database_url }}" \
+            --schema "${{ steps.schema.outputs.schema_name }}" \
+            --format '{{ sql . "  " }}' || echo "Inspect failed"
+
+          echo ""
+          echo "=== Diffing schema ==="
           atlas schema diff \
-            --from "${{ steps.schema.outputs.database_url }}?search_path=${{ steps.schema.outputs.schema_name }}" \
+            --from "${{ steps.schema.outputs.database_url }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
+            --schema "${{ steps.schema.outputs.schema_name }}" \
             --format '{{ sql . "  " }}' > /tmp/migration.sql
 
           echo "Planned changes:"
@@ -193,9 +202,10 @@ jobs:
         if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
         run: |
           atlas schema apply \
-            --url "${{ steps.schema.outputs.database_url }}?search_path=${{ steps.schema.outputs.schema_name }}" \
+            --url "${{ steps.schema.outputs.database_url }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
+            --schema "${{ steps.schema.outputs.schema_name }}" \
             --auto-approve
 
       - name: Cloud Run Deploy
