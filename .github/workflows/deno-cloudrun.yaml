@@ -146,22 +146,53 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Database Migrate
+      - name: Schema Setup
+        id: schema
         if: github.ref == 'refs/heads/main'
         run: |
-          # Check if migrate task exists in deno.jsonc
-          if ! deno eval "const c=JSON.parse(Deno.readTextFileSync('deno.jsonc')); if(!c.tasks?.migrate) Deno.exit(1);" 2>/dev/null; then
-            echo "No migrate task defined, skipping migrations"
+          # Check if schema file exists
+          if [ ! -f "db/schema.hcl" ]; then
+            echo "No db/schema.hcl found, skipping schema apply"
+            echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
           fi
 
           # Fetch DATABASE_URL from Secret Manager
           secret_name="${{ steps.info.outputs.name }}-database-url"
           DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+          echo "::add-mask::$DATABASE_URL"
+          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
 
-          # Run migrations
-          echo "Running database migrations..."
-          DATABASE_URL="$DATABASE_URL" deno task migrate
+      - name: Atlas Setup
+        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+        uses: ariga/setup-atlas@v0
+
+      - name: Atlas Schema Check
+        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+        run: |
+          atlas schema diff \
+            --from "${{ steps.schema.outputs.database_url }}" \
+            --to file://db/schema.hcl \
+            --dev-url "docker://postgres/15/dev?search_path=public" \
+            --format '{{ sql . "  " }}' > /tmp/migration.sql
+
+          echo "Planned changes:"
+          cat /tmp/migration.sql
+
+          # Check for destructive changes
+          if grep -qiE "DROP (TABLE|COLUMN|INDEX|CONSTRAINT)" /tmp/migration.sql; then
+            echo "::error::Destructive changes detected! Apply manually with 'deno task db:apply' then push again."
+            exit 1
+          fi
+
+      - name: Atlas Schema Apply
+        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+        run: |
+          atlas schema apply \
+            --url "${{ steps.schema.outputs.database_url }}" \
+            --to file://db/schema.hcl \
+            --dev-url "docker://postgres/15/dev?search_path=public" \
+            --auto-approve
 
       - name: Cloud Run Deploy
         if: github.ref == 'refs/heads/main'
