@@ -12,54 +12,46 @@
 
   "pre-commit": {
     "parallel": true,
+    "files": "git ls-files",
     "commands": {
       // General checks - always run
       "gitleaks": {
-        "run": "gitleaks protect --staged --no-banner"
+        "run": "gitleaks detect --no-banner --no-git"
       },
 
       "check-merge-conflict": {
-        "glob": "*.{ts,tsx,js,jsx,json,yaml,yml,md,tf,hcl}",
-        "run": "git diff --cached --name-only | xargs grep -l '^<<<<<<< \\|^=======$\\|^>>>>>>> ' && exit 1 || exit 0"
+        "run": "git ls-files '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.yaml' '*.yml' '*.md' '*.tf' '*.hcl' | xargs grep -l '^<<<<<<< \\|^=======$\\|^>>>>>>> ' && exit 1 || exit 0"
       },
 
       "detect-private-key": {
-        "glob": "*.{pem,key}",
-        "run": "if git diff --cached --name-only | grep -E '\\.(pem|key)$'; then\n  echo 'Error: Attempting to commit private key files'\n  exit 1\nfi\nexit 0"
+        "run": "if git ls-files '*.pem' '*.key' | grep .; then\n  echo 'Error: Private key files found'\n  exit 1\nfi"
       },
 
       "check-large-files": {
-        "run": "max_size=5242880\nfor file in $(git diff --cached --name-only); do\n  if [ -f \"$file\" ]; then\n    size=$(stat -f%z \"$file\" 2>/dev/null || stat --format=%s \"$file\" 2>/dev/null)\n    if [ \"$size\" -gt \"$max_size\" ]; then\n      echo \"Error: $file exceeds 5MB limit ($size bytes)\"\n      exit 1\n    fi\n  fi\ndone\nexit 0"
+        "run": "max_size=5242880\nfor file in $(git ls-files); do\n  if [ -f \"$file\" ]; then\n    size=$(stat -f%z \"$file\" 2>/dev/null || stat --format=%s \"$file\" 2>/dev/null)\n    if [ \"$size\" -gt \"$max_size\" ]; then\n      echo \"Error: $file exceeds 5MB limit ($size bytes)\"\n      exit 1\n    fi\n  fi\ndone"
       },
 
       "no-shell-scripts": {
-        "glob": "*.sh",
-        "run": "if git diff --cached --name-only | grep '\\.sh$'; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi\nexit 0"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
       },
 
       "typos": {
-        "glob": "*.{ts,tsx,js,jsx,json,yaml,yml,md}",
-        "run": "typos -w --exclude node_modules .",
-        "stage_fixed": true
+        "run": "typos -w --exclude node_modules ."
       },
 
       "markdownlint": {
-        "glob": "*.md",
-        "run": "echo '{\"MD013\": {\"line_length\": 100}}' > /tmp/.markdownlint-config.json && markdownlint --config /tmp/.markdownlint-config.json --fix --dot --ignore node_modules --ignore LICENSE.md .",
-        "stage_fixed": true
+        "run": "echo '{\"MD013\": {\"line_length\": 100}}' > /tmp/.markdownlint-config.json && markdownlint --config /tmp/.markdownlint-config.json --fix --dot --ignore node_modules --ignore LICENSE.md ."
       },
 
       // Deno checks - skip if not a Deno repo
       "deno-fmt": {
         "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno fmt",
-        "stage_fixed": true
+        "run": "deno fmt"
       },
 
       "deno-lint": {
         "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno lint --fix",
-        "stage_fixed": true
+        "run": "deno lint --fix"
       },
 
       "deno-check": {
@@ -78,8 +70,7 @@
       // Terraform checks - skip if not a Terraform repo
       "terraform-fmt": {
         "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
-        "run": "terramate run -- tofu fmt",
-        "stage_fixed": true
+        "run": "terramate run -- tofu fmt"
       },
 
       "terraform-validate": {

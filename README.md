@@ -133,7 +133,15 @@ For emergency commits, use `--no-verify`:
 git commit --no-verify -m "emergency fix"
 ```
 
+### Manual Checks
+
+Run all checks manually on all files:
+
+```bash
+lefthook run pre-commit --force
+```
+
 ### CI Parity
 
-Pre-commit hooks run the same checks as CI. Running on all files (not just staged) ensures identical
-behavior between local development and CI pipelines.
+Pre-commit hooks run the same checks as CI. Running on all files ensures identical behavior between
+local development and CI pipelines.
