@@ -23,7 +23,7 @@ Developers SHALL be able to run Atlas commands locally for schema operations.
 
 #### Scenario: Local schema apply
 
-- **WHEN** a developer runs `atlas schema apply` locally with DATABASE\_URL set
+- **WHEN** a developer runs `atlas schema apply` locally with DATABASE_URL set
 - **THEN** Atlas diffs and applies schema changes to the target database
 
 #### Scenario: Local schema diff
@@ -35,7 +35,7 @@ Developers SHALL be able to run Atlas commands locally for schema operations.
 
 - **WHEN** an app has a database schema
 - **THEN** it SHALL provide a `deno task db:apply` that runs Atlas with the
-  local DATABASE\_URL
+  local DATABASE_URL
 
 ### Requirement: CI applies schema changes via Atlas
 

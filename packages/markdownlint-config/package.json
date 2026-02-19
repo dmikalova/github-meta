@@ -1,0 +1,28 @@
+{
+  "name": "@dmikalova/markdownlint-config",
+  "version": "1.0.0",
+  "description": "Shared markdownlint configuration for markdown linting",
+  "main": ".markdownlint-cli2.jsonc",
+  "exports": {
+    ".": "./.markdownlint-cli2.jsonc"
+  },
+  "files": [
+    ".markdownlint-cli2.jsonc"
+  ],
+  "keywords": [
+    "markdownlint",
+    "markdownlint-config",
+    "markdown",
+    "lint"
+  ],
+  "author": "David Mikalova",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dmikalova/github-meta.git",
+    "directory": "packages/markdownlint-config"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}

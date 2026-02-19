@@ -35,12 +35,14 @@
         "run": "git ls-files | typos --file-list - --write-changes"
       },
 
-      "remark": {
-        "glob": "**/*.md",
-        "run": "npx remark {all_files} --output --quiet"
-      },
+      // "markdownlint": {
+      //   "glob": "**/*.md",
+      //   "exclude": ["LICENSE.md", ".terraform/**", "node_modules/**"],
+      //   "run": "markdownlint-cli2 --fix {all_files}",
+      // },
+
       "deno-fmt": {
-        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
+        "glob": "deno.json*",
         "run": "deno fmt"
       }
       // "deno-lint": {

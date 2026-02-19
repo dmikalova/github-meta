@@ -11,7 +11,7 @@
 - [x] 2.1 Update `deno-cloudrun.yaml` to add Atlas schema apply step after image
       publish
 - [x] 2.2 Add conditional check to skip Atlas if `db/schema.hcl` doesn't exist
-- [x] 2.3 Fetch DATABASE\_URL from Secret Manager using
+- [x] 2.3 Fetch DATABASE_URL from Secret Manager using
       `gcloud secrets versions access`
 - [x] 2.4 Add `ariga/atlas-action/schema/apply@v1` action with lint for
       destructive changes

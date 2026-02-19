@@ -12,10 +12,10 @@ migrations.
 - **WHEN** the pipeline runs migrate
 - **THEN** it executes `deno task migrate` in a Deno container
 
-#### Scenario: DATABASE\_URL injected
+#### Scenario: DATABASE_URL injected
 
 - **WHEN** migrations run
-- **THEN** the DATABASE\_URL secret is available as an environment variable
+- **THEN** the DATABASE_URL secret is available as an environment variable
 
 ### Requirement: Migrations run before deploy
 
