@@ -26,31 +26,28 @@
     "parallel": true,
     "commands": {
       "deno-check": {
-        "glob": "deno.json*",
         "run": "deno run check",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+            "run": "! git ls-files 'deno.json*' | grep -q .",
           },
         ],
       },
 
       "deno-fmt": {
-        "glob": "deno.json*",
         "run": "deno run fmt",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+            "run": "! git ls-files 'deno.json*' | grep -q .",
           },
         ],
       },
 
       "deno-lint": {
-        "glob": "deno.json*",
         "run": "deno run lint --fix",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+            "run": "! git ls-files 'deno.json*' | grep -q .",
           },
         ],
       },
