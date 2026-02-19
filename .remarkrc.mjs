@@ -1,1 +1,1 @@
-export * from "./packages/remark-config/index.mjs";
+export { default } from "./packages/remark-config/index.mjs";

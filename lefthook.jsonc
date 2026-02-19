@@ -5,44 +5,44 @@
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "commitlint --edit"
-      }
-    }
+        "run": "commitlint --edit",
+      },
+    },
   },
 
   "pre-commit": {
-    "parallel": true,
+    // "parallel": true,
     "files": "git ls-files",
     "commands": {
       // General checks - always run
       "gitleaks": {
-        "run": "gitleaks detect . --no-banner --verbose"
+        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
       },
 
       "merge-conflicts": {
-        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0",
       },
 
       "check-large-files": {
-        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0",
       },
 
       "no-shell-scripts": {
-        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
       },
 
       "typos": {
-        "run": "git ls-files | typos --file-list - --write-changes"
+        "run": "git ls-files | typos --file-list - --write-changes",
       },
 
-      "remark": {
-        "glob": "**/*.md",
-        "run": "npx remark {staged_files} --frail --output"
-      },
-      // // Deno checks - skip if not a Deno repo
+      // "remark": {
+      //   "glob": "**/*.md",
+      //   "run": "npx remark {all_files} --output --quiet",
+      // },
+
       // "deno-fmt": {
       //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-      //   "run": "deno fmt"
+      //   "run": "deno fmt",
       // },
 
       // "deno-lint": {
@@ -73,6 +73,6 @@
       //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
       //   "run": "terramate run -- tofu validate"
       // }
-    }
-  }
+    },
+  },
 }

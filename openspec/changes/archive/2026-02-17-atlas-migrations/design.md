@@ -198,15 +198,15 @@ curl -sSf https://atlasgo.sh | sh
 
 ## Risks / Trade-offs
 
-**\[Risk] Destructive changes applied accidentally** → Mitigated by atlas lint blocking destructive
+**[Risk] Destructive changes applied accidentally** → Mitigated by atlas lint blocking destructive
 changes in CI. Manual local apply required for intentional drops.
 
-**\[Risk] Dev container adds \~10-20s to CI** → Acceptable overhead for schema-as-code benefits. Can
+**[Risk] Dev container adds ~10-20s to CI** → Acceptable overhead for schema-as-code benefits. Can
 optimize with Docker layer caching if needed.
 
-**\[Risk] HCL learning curve** → Minor friction. HCL syntax is straightforward and well-documented.
+**[Risk] HCL learning curve** → Minor friction. HCL syntax is straightforward and well-documented.
 
-**\[Risk] Atlas version drift** → `setup-atlas@v0` may pull different versions over time. Mitigation:
+**[Risk] Atlas version drift** → `setup-atlas@v0` may pull different versions over time. Mitigation:
 Pin to specific version if issues arise.
 
 ## Migration Plan

@@ -1,17 +1,17 @@
 {
-"devDependencies": {
-"@commitlint/cli": "^19.0.0",
-"@commitlint/config-conventional": "^19.0.0",
-"lefthook": "^2.1.1",
-"typescript": "^5.3.0"
-},
-"name": "github-meta",
-"private": true,
-"scripts": {
-"build": "npm run build --workspaces --if-present",
-"postinstall": "lefthook install"
-},
-"workspaces": [
-"packages/*"
-]
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "lefthook": "^2.1.1",
+    "typescript": "^5.3.0"
+  },
+  "name": "github-meta",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "postinstall": "lefthook install"
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
