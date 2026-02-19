@@ -1,5 +1,26 @@
 /**
- * Local commitlint config that extends the shared package.
- * Consumer repos use: extends: ['@dmikalova/commitlint-config']
+ * Commitlint configuration.
+ * Enforces conventional commit format with standard type prefixes.
  */
-export { default } from "./packages/commitlint-config/index.mjs";
+export default {
+  extends: ["@commitlint/config-conventional"],
+  rules: {
+    "type-enum": [
+      2,
+      "always",
+      [
+        "build",
+        "chore",
+        "ci",
+        "docs",
+        "feat",
+        "fix",
+        "perf",
+        "refactor",
+        "revert",
+        "style",
+        "test",
+      ],
+    ],
+  },
+};
