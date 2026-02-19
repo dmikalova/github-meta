@@ -1,79 +1,89 @@
 {
   // Base lefthook configuration for all repos
-  // Extend this in your repo: "remotes": [{ "git_url": "https://github.com/dmikalova/github-meta", "ref": "main", "configs": ["lefthook.jsonc"] }]
+  // Extend this in your repo:
+  // {
+  //   "remotes": [
+  //     {
+  //       "configs": ["lefthook.jsonc"],
+  //       "git_url": "https://github.com/dmikalova/github-meta",
+  //       "ref": "main",
+  //       "refetch": true,
+  //     },
+  //   ],
+  // }
 
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "commitlint --edit",
-      },
-    },
+        "run": "commitlint --edit"
+      }
+    }
   },
 
   "pre-commit": {
-    // "parallel": true,
+    "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
     "files": "git ls-files",
+    "parallel": true,
     "commands": {
-      // General checks - always run
-      "gitleaks": {
-        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
-      },
-
-      "merge-conflicts": {
-        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0",
-      },
-
-      "check-large-files": {
-        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0",
-      },
-
-      "no-shell-scripts": {
-        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
-      },
-
-      "typos": {
-        "run": "git ls-files | typos --file-list - --write-changes",
-      },
-
-      "quickmark": {
-        "glob": "**/*.md",
-        "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
-        "run": "qmark {all_files}",
+      "deno-check": {
+        "glob": "deno.json*",
+        "run": "deno check"
       },
 
       "deno-fmt": {
         "glob": "deno.json*",
-        "run": "deno fmt",
+        "run": "deno fmt"
       },
 
       "deno-lint": {
         "glob": "deno.json*",
-        "run": "deno lint --fix",
+        "run": "deno lint --fix"
       },
 
-      "deno-check": {
-        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno check src/**/*.ts"
+      "deno-test": {
+        "run": "deno test",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q ."
+          }
+        ]
       },
 
-      // "deno-test": {
-      //   "skip": [
-      //     { "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" },
-      //     { "run": "[ ! -d tests ]" }
-      //   ],
-      //   "run": "deno test --allow-all"
-      // },
+      "markdown-lint": {
+        "glob": "**/*.md",
+        "run": "qmark {all_files}"
+      },
 
-      // // Terraform checks - skip if not a Terraform repo
-      // "terraform-fmt": {
-      //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
-      //   "run": "terramate run -- tofu fmt"
-      // },
+      "no-gitleaks": {
+        "run": "gitleaks detect . --log-level warn --no-banner --verbose"
+      },
 
-      // "terraform-validate": {
-      //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
-      //   "run": "terramate run -- tofu validate"
-      // }
-    },
-  },
+      "no-large-files": {
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
+      },
+
+      "no-merge-conflicts": {
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
+      },
+
+      "no-shell-scripts": {
+        "glob": "**/*.sh",
+        "run": "echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.' && exit 1"
+      },
+
+      "no-typos": {
+        "run": "git ls-files | typos --file-list - --write-changes"
+      },
+
+      "terraform-fmt": {
+        "glob": "**/*.tf",
+        "run": "tofu fmt"
+      },
+
+      "terraform-validate": {
+        "glob": "**/*.tf",
+        "run": "tofu validate"
+      }
+    }
+  }
 }
