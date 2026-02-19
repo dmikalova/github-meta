@@ -92,11 +92,21 @@
       "terraform-fmt": {
         "glob": "**/*.tf",
         "run": "tofu fmt",
+        "skip": [
+          {
+            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q .",
+          },
+        ],
       },
 
       "terraform-validate": {
         "glob": "**/*.tf",
         "run": "terramate run -- tofu validate",
+        "skip": [
+          {
+            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q .",
+          },
+        ],
       },
     },
   },
