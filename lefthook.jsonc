@@ -22,7 +22,7 @@
 
   "pre-commit": {
     "files": "git ls-files",
-    "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
+    "exclude": ["node_modules/**", "LICENSE", ".terraform/**"],
     "parallel": true,
     "commands": {
       "deno-check": {
