@@ -96,7 +96,7 @@
 
       "terraform-validate": {
         "glob": "**/*.tf",
-        "run": "tofu validate",
+        "run": "terramate run -- tofu validate",
       },
     },
   },
