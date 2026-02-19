@@ -1,0 +1,15 @@
+# Quickmark configuration
+# https://github.com/ekropotin/quickmark
+
+[linters.severity]
+# Disable line length - let editors handle wrapping
+line-length = "off"
+# Allow inline HTML (common in GitHub READMEs, badges)
+no-inline-html = "off"
+# Disable blanks-around-lists - too strict for loose lists with spacing
+blanks-around-lists = "off"
+# Disable emphasis style consistency - allow both * and _
+emphasis-style = "off"
+
+[ignore]
+paths = [".terraform/**", "LICENSE.md", "node_modules/**"]

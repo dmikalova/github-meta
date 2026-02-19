@@ -35,11 +35,11 @@
         "run": "git ls-files | typos --file-list - --write-changes"
       },
 
-      // "markdownlint": {
-      //   "glob": "**/*.md",
-      //   "exclude": ["LICENSE.md", ".terraform/**", "node_modules/**"],
-      //   "run": "markdownlint-cli2 --fix {all_files}",
-      // },
+      "quickmark": {
+        "glob": "**/*.md",
+        "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
+        "run": "qmark {all_files}"
+      },
 
       "deno-fmt": {
         "glob": "deno.json*",

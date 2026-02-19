@@ -215,7 +215,7 @@ ephemeral.
 blocking destructive changes in CI. Manual local apply required for intentional
 drops.
 
-**Risk: Dev container adds \~10-20s to CI** → Acceptable overhead for
+**Risk: Dev container adds ~10-20s to CI** → Acceptable overhead for
 schema-as-code benefits. Can optimize with Docker layer caching if needed.
 
 **Risk: HCL learning curve** → Minor friction. HCL syntax is straightforward and
