@@ -9,10 +9,6 @@
   "files": [
     "index.mjs"
   ],
-  "peerDependencies": {
-    "@commitlint/cli": ">=17.0.0",
-    "@commitlint/config-conventional": ">=17.0.0"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dmikalova/github-meta.git",

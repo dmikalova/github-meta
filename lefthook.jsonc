@@ -21,8 +21,8 @@
   },
 
   "pre-commit": {
-    "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
     "files": "git ls-files",
+    "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
     "parallel": true,
     "commands": {
       "deno-check": {
@@ -67,8 +67,7 @@
       },
 
       "no-shell-scripts": {
-        "glob": "**/*.sh",
-        "run": "echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.' && exit 1"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
       },
 
       "no-typos": {
