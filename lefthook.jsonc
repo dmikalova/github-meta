@@ -27,7 +27,7 @@
     "commands": {
       "deno-check": {
         "glob": "deno.json*",
-        "run": "deno check",
+        "run": "deno run check",
         "skip": [
           {
             "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
@@ -37,7 +37,7 @@
 
       "deno-fmt": {
         "glob": "deno.json*",
-        "run": "deno fmt",
+        "run": "deno run fmt",
         "skip": [
           {
             "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
@@ -47,7 +47,7 @@
 
       "deno-lint": {
         "glob": "deno.json*",
-        "run": "deno lint --fix",
+        "run": "deno run lint --fix",
         "skip": [
           {
             "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
@@ -56,7 +56,7 @@
       },
 
       "deno-test": {
-        "run": "deno test",
+        "run": "deno run test",
         "skip": [
           {
             "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
@@ -66,7 +66,7 @@
 
       "markdown-lint": {
         "glob": "**/*.md",
-        "run": "echo files {all_files} && qmark {all_files}",
+        "run": "qmark {all_files}",
       },
 
       "no-gitleaks": {
