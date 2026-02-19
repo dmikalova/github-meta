@@ -15,9 +15,9 @@
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "commitlint --edit"
-      }
-    }
+        "run": "commitlint --edit",
+      },
+    },
   },
 
   "pre-commit": {
@@ -27,62 +27,77 @@
     "commands": {
       "deno-check": {
         "glob": "deno.json*",
-        "run": "deno check"
+        "run": "deno check",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+          },
+        ],
       },
 
       "deno-fmt": {
         "glob": "deno.json*",
-        "run": "deno fmt"
+        "run": "deno fmt",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+          },
+        ],
       },
 
       "deno-lint": {
         "glob": "deno.json*",
-        "run": "deno lint --fix"
+        "run": "deno lint --fix",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+          },
+        ],
       },
 
       "deno-test": {
         "run": "deno test",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+          },
+        ],
       },
 
       "markdown-lint": {
         "glob": "**/*.md",
-        "run": "qmark {all_files}"
+        "run": "qmark {all_files}",
       },
 
       "no-gitleaks": {
-        "run": "gitleaks detect . --log-level warn --no-banner --verbose"
+        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
       },
 
       "no-large-files": {
-        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0",
       },
 
       "no-merge-conflicts": {
-        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0",
       },
 
       "no-shell-scripts": {
-        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
       },
 
       "no-typos": {
-        "run": "git ls-files | typos --file-list - --write-changes"
+        "run": "git ls-files | typos --file-list - --write-changes",
       },
 
       "terraform-fmt": {
         "glob": "**/*.tf",
-        "run": "tofu fmt"
+        "run": "tofu fmt",
       },
 
       "terraform-validate": {
         "glob": "**/*.tf",
-        "run": "tofu validate"
-      }
-    }
-  }
+        "run": "tofu validate",
+      },
+    },
+  },
 }
