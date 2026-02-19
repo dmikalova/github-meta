@@ -4,7 +4,8 @@ Shared configurations and reusable workflows for all repositories.
 
 ## Lefthook Pre-commit Hooks
 
-This repo provides a base lefthook configuration that can be extended by other repos.
+This repo provides a base lefthook configuration that can be extended by other
+repos.
 
 ### Setup for npm repos
 
@@ -21,9 +22,9 @@ Create `lefthook.jsonc`:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"],
-    },
-  ],
+      "configs": ["lefthook.jsonc"]
+    }
+  ]
 }
 ```
 
@@ -54,9 +55,9 @@ Create `lefthook.jsonc`:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"],
-    },
-  ],
+      "configs": ["lefthook.jsonc"]
+    }
+  ]
 }
 ```
 
@@ -65,8 +66,8 @@ Add setup task to `deno.jsonc`:
 ```jsonc
 {
   "tasks": {
-    "setup": "lefthook install",
-  },
+    "setup": "lefthook install"
+  }
 }
 ```
 
@@ -89,9 +90,9 @@ Create `lefthook.jsonc` in the repo root:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"],
-    },
-  ],
+      "configs": ["lefthook.jsonc"]
+    }
+  ]
 }
 ```
 
@@ -143,5 +144,5 @@ lefthook run pre-commit --force
 
 ### CI Parity
 
-Pre-commit hooks run the same checks as CI. Running on all files ensures identical behavior between
-local development and CI pipelines.
+Pre-commit hooks run the same checks as CI. Running on all files ensures
+identical behavior between local development and CI pipelines.

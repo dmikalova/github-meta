@@ -2,13 +2,15 @@
 
 ## Why
 
-Commits with lint errors, formatting issues, or failing tests waste CI time and create noisy git
-history with fix-up commits. A pre-commit hook that auto-detects repo type and runs the appropriate
-checks catches issues before they're pushed, improving code quality and developer experience.
+Commits with lint errors, formatting issues, or failing tests waste CI time and
+create noisy git history with fix-up commits. A pre-commit hook that
+auto-detects repo type and runs the appropriate checks catches issues before
+they're pushed, improving code quality and developer experience.
 
 ## What Changes
 
-- Add lefthook as the pre-commit framework (modern, fast, supports config sharing via `extends`)
+- Add lefthook as the pre-commit framework (modern, fast, supports config
+  sharing via `extends`)
 - Create base lefthook configuration in github-meta with auto-detection logic
 - Define standard check suites for each repo type:
   - **Deno repos**: `deno fmt --check`, `deno lint`, `deno check`, `deno test`
@@ -21,8 +23,8 @@ checks catches issues before they're pushed, improving code quality and develope
 
 ### New Capabilities
 
-- `precommit-hooks`: Shared pre-commit hook configuration with auto-detection of repo type and
-  convention-based check execution
+- `precommit-hooks`: Shared pre-commit hook configuration with auto-detection of
+  repo type and convention-based check execution
 
 ### Modified Capabilities
 

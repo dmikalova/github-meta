@@ -15,7 +15,8 @@
 - [x] 2.5 Implement `test` function (runs `deno task test`)
 - [x] 2.6 Implement `build` function (deno compile → distroless container)
 - [x] 2.7 Implement `publish` function (push to GHCR)
-- [x] 2.8 Implement `migrate` function (runs `deno task migrate` with DATABASE\_URL)
+- [x] 2.8 Implement `migrate` function (runs `deno task migrate` with
+      DATABASE_URL)
 - [x] 2.9 Implement `deploy` function (gcloud run deploy)
 - [x] 2.10 Add config reading from `mklv.config.mts`
 

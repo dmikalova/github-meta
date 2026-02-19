@@ -4,7 +4,8 @@
 
 ### Requirement: Pipeline provides migrate function
 
-The Dagger module SHALL provide a `migrate` function that runs database migrations.
+The Dagger module SHALL provide a `migrate` function that runs database
+migrations.
 
 #### Scenario: Migrations run via deno task
 
@@ -18,7 +19,8 @@ The Dagger module SHALL provide a `migrate` function that runs database migratio
 
 ### Requirement: Migrations run before deploy
 
-The pipeline SHALL execute migrations after publishing the image but before deploying to Cloud Run.
+The pipeline SHALL execute migrations after publishing the image but before
+deploying to Cloud Run.
 
 #### Scenario: Pipeline order
 

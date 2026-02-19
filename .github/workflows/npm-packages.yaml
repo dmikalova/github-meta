@@ -39,7 +39,7 @@ jobs:
         id: release
         uses: cycjimmy/semantic-release-action@v4
         with:
-          extends: '@dmikalova/semantic-release-config'
+          extends: "@dmikalova/semantic-release-config"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}

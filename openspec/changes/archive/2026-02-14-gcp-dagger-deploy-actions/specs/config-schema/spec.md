@@ -18,7 +18,8 @@ The MklvConfig type SHALL require a `name` field for the application identifier.
 
 ### Requirement: Schema defines entrypoint
 
-The MklvConfig type SHALL require an `entrypoint` field specifying the Deno entry file.
+The MklvConfig type SHALL require an `entrypoint` field specifying the Deno
+entry file.
 
 #### Scenario: Entrypoint used for compile
 
@@ -27,7 +28,8 @@ The MklvConfig type SHALL require an `entrypoint` field specifying the Deno entr
 
 ### Requirement: Schema defines runtime configuration
 
-The MklvConfig type SHALL include a `runtime` object for port and health check settings.
+The MklvConfig type SHALL include a `runtime` object for port and health check
+settings.
 
 #### Scenario: Port has default
 
@@ -41,7 +43,8 @@ The MklvConfig type SHALL include a `runtime` object for port and health check s
 
 ### Requirement: Schema is TypeScript interface
 
-The schema SHALL be defined as a TypeScript interface that provides compile-time validation.
+The schema SHALL be defined as a TypeScript interface that provides compile-time
+validation.
 
 #### Scenario: IDE shows type errors
 

@@ -178,5 +178,5 @@ The system SHALL validate commit messages follow conventional commit format.
 #### Scenario: Allowed commit types
 
 - **WHEN** validating commit type prefix
-- **THEN** the system SHALL accept: feat, fix, docs, style, refactor, test, chore, ci, perf, build,
-  revert
+- **THEN** the system SHALL accept: feat, fix, docs, style, refactor, test,
+  chore, ci, perf, build, revert

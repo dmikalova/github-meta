@@ -4,7 +4,8 @@
 
 ### Requirement: Workflow is reusable
 
-The workflow SHALL be defined as a reusable workflow that other repos can call with `workflow_call`.
+The workflow SHALL be defined as a reusable workflow that other repos can call
+with `workflow_call`.
 
 #### Scenario: Called from app repo
 
@@ -23,8 +24,8 @@ The workflow SHALL check out the calling repository's source code.
 
 ### Requirement: Workflow authenticates to GCP via WIF
 
-The workflow SHALL authenticate to GCP using Workload Identity Federation with hardcoded provider
-and service account.
+The workflow SHALL authenticate to GCP using Workload Identity Federation with
+hardcoded provider and service account.
 
 #### Scenario: WIF authentication succeeds
 
@@ -34,7 +35,8 @@ and service account.
 #### Scenario: Uses deploy service account
 
 - **WHEN** the workflow authenticates
-- **THEN** it uses `github-actions-deploy@dmikalova-mklv.iam.gserviceaccount.com`
+- **THEN** it uses
+  `github-actions-deploy@dmikalova-mklv.iam.gserviceaccount.com`
 
 ### Requirement: Workflow runs Dagger pipeline
 
@@ -43,11 +45,13 @@ The workflow SHALL invoke the Dagger pipeline from github-meta.
 #### Scenario: Dagger module called
 
 - **WHEN** the workflow runs
-- **THEN** it calls `dagger call` with the `github.com/dmikalova/github-meta/dagger/deno` module
+- **THEN** it calls `dagger call` with the
+  `github.com/dmikalova/github-meta/dagger/deno` module
 
 ### Requirement: Workflow passes secrets to Dagger
 
-The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the Dagger pipeline.
+The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the
+Dagger pipeline.
 
 #### Scenario: GitHub token available
 
@@ -57,7 +61,8 @@ The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the D
 #### Scenario: Database URL fetched for Atlas
 
 - **WHEN** Atlas needs to apply schema changes
-- **THEN** DATABASE\_URL is fetched from GCP Secret Manager using `gcloud secrets versions access`
+- **THEN** DATABASE\_URL is fetched from GCP Secret Manager using
+  `gcloud secrets versions access`
 
 ### Requirement: Workflow triggers on main branch push
 

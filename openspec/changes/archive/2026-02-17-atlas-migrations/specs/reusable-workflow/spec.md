@@ -4,7 +4,8 @@
 
 ### Requirement: Workflow passes secrets to Dagger
 
-The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the Dagger pipeline.
+The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the
+Dagger pipeline.
 
 #### Scenario: GitHub token available
 
@@ -14,14 +15,15 @@ The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the D
 #### Scenario: Database URL fetched for Atlas
 
 - **WHEN** Atlas needs to apply schema changes
-- **THEN** DATABASE\_URL is fetched from GCP Secret Manager using `gcloud secrets versions access`
+- **THEN** DATABASE\_URL is fetched from GCP Secret Manager using
+  `gcloud secrets versions access`
 
 ## REMOVED Requirements
 
 ### Requirement: Workflow uses deno task migrate
 
-**Reason**: Replaced by Atlas declarative schema management. Sequential migration files are replaced
-by schema-as-code with automatic diffing.
+**Reason**: Replaced by Atlas declarative schema management. Sequential
+migration files are replaced by schema-as-code with automatic diffing.
 
 **Migration**: Apps should:
 

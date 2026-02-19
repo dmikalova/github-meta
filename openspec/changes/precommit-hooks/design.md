@@ -2,15 +2,16 @@
 
 ## Context
 
-Currently, code quality checks run only in CI after commits are pushed. This means:
+Currently, code quality checks run only in CI after commits are pushed. This
+means:
 
 - Developers discover lint/format issues after pushing
 - CI resources spent on obviously broken builds
 - Fix-up commits pollute git history
 
-Pre-commit hooks solve this by running checks locally before allowing commits. The challenge is
-maintaining consistent configuration across multiple repos with different tech stacks (Deno,
-Terraform, etc.).
+Pre-commit hooks solve this by running checks locally before allowing commits.
+The challenge is maintaining consistent configuration across multiple repos with
+different tech stacks (Deno, Terraform, etc.).
 
 ## Goals / Non-Goals
 
@@ -59,19 +60,21 @@ Terraform, etc.).
 Detection order (first match wins):
 
 1. `deno.json` or `deno.jsonc` → Deno repo
-2. `terramate.tm.hcl` or `*.tf` files → Terraform repo (use terramate for discovery)
+2. `terramate.tm.hcl` or `*.tf` files → Terraform repo (use terramate for
+   discovery)
 3. `package.json` → Node.js repo (future)
 
-**Rationale:** File presence is reliable, requires no configuration, and matches how developers
-think about project types.
+**Rationale:** File presence is reliable, requires no configuration, and matches
+how developers think about project types.
 
 ### Decision: Use Terramate for Terraform stack discovery
 
-**Choice:** Use `terramate run` for discovering and running checks across Terraform stacks.
+**Choice:** Use `terramate run` for discovering and running checks across
+Terraform stacks.
 
 **Rationale:** Terramate already handles stack discovery and provides
-`terramate run -- tofu fmt -check` and `terramate run -- tofu validate` which handles all stacks
-automatically.
+`terramate run -- tofu fmt -check` and `terramate run -- tofu validate` which
+handles all stacks automatically.
 
 **Alternatives:**
 
@@ -80,10 +83,12 @@ automatically.
 
 ### Decision: Explore Biome for config file formatting
 
-**Choice:** Evaluate Biome as a fast, opinionated formatter for JSON/config files.
+**Choice:** Evaluate Biome as a fast, opinionated formatter for JSON/config
+files.
 
-**Rationale:** Biome is Rust-based, extremely fast, and provides opinionated defaults. While Deno
-has its own formatter, Biome could handle non-Deno files (JSON, YAML) with better performance.
+**Rationale:** Biome is Rust-based, extremely fast, and provides opinionated
+defaults. While Deno has its own formatter, Biome could handle non-Deno files
+(JSON, YAML) with better performance.
 
 **Alternatives:**
 
@@ -92,10 +97,11 @@ has its own formatter, Biome could handle non-Deno files (JSON, YAML) with bette
 
 ### Decision: Block prohibited file types
 
-**Choice:** Block commits containing `.sh` shell scripts - all scripts should be TypeScript.
+**Choice:** Block commits containing `.sh` shell scripts - all scripts should be
+TypeScript.
 
-**Rationale:** Maintains consistency across repos. TypeScript scripts are type-safe, testable, and
-work with Deno's permission model.
+**Rationale:** Maintains consistency across repos. TypeScript scripts are
+type-safe, testable, and work with Deno's permission model.
 
 **Alternatives:**
 
@@ -104,10 +110,11 @@ work with Deno's permission model.
 
 ### Decision: Parallel execution with fail-fast
 
-**Choice:** Run checks in parallel within each category, fail-fast on first error.
+**Choice:** Run checks in parallel within each category, fail-fast on first
+error.
 
-**Rationale:** Maximizes speed while giving immediate feedback. Developer sees first failure quickly
-rather than waiting for all checks.
+**Rationale:** Maximizes speed while giving immediate feedback. Developer sees
+first failure quickly rather than waiting for all checks.
 
 ### Decision: Centralized config with local extends
 
@@ -127,21 +134,24 @@ extends:
 
 ## Risks / Trade-offs
 
-**\[Risk] Remote config fetch fails** → lefthook caches extended configs locally after first fetch.
-Developers can work offline after initial setup.
+**Risk: Remote config fetch fails** → lefthook caches extended configs locally
+after first fetch. Developers can work offline after initial setup.
 
-**\[Risk] Breaking change in base config** → Could break commits in all repos. Mitigation: Test base
-config changes carefully, consider versioned URLs for stability.
+**Risk: Breaking change in base config** → Could break commits in all repos.
+Mitigation: Test base config changes carefully, consider versioned URLs for
+stability.
 
-**\[Risk] Slow pre-commit on full repo** → Running on all files (not just staged) takes longer.
-Mitigation: Parallel execution, caching where tools support it, tests are fast. Benefit is
-consistency - same as CI.
+**Risk: Slow pre-commit on full repo** → Running on all files (not just staged)
+takes longer. Mitigation: Parallel execution, caching where tools support it,
+tests are fast. Benefit is consistency - same as CI.
 
-**\[Trade-off] Strict blocking vs warnings** → Chose strict blocking for quality. Developers can
-`--no-verify` for emergencies, but this is intentionally friction-full.
+**Trade-off: Strict blocking vs warnings** → Chose strict blocking for quality.
+Developers can `--no-verify` for emergencies, but this is intentionally
+friction-full.
 
-**\[Trade-off] All files vs staged only** → Chose all files for CI parity. Staged-only could miss
-issues introduced by unstaged changes that interact with staged ones.
+**Trade-off: All files vs staged only** → Chose all files for CI parity.
+Staged-only could miss issues introduced by unstaged changes that interact with
+staged ones.
 
-**\[Trade-off] Auto-detect vs explicit** → Auto-detect means less control but zero config. Chose
-convention over configuration.
+**Trade-off: Auto-detect vs explicit** → Auto-detect means less control but zero
+config. Chose convention over configuration.

@@ -6,7 +6,8 @@ Conventions for AI coding agents working with this repository and Deno apps.
 
 ### Permission Sets
 
-Always use `--permission-set` instead of individual permission flags when running Deno scripts:
+Always use `--permission-set` instead of individual permission flags when
+running Deno scripts:
 
 ```bash
 # Good
@@ -17,7 +18,8 @@ deno task dev  # tasks should use --permission-set internally
 deno run --allow-env --allow-net --allow-read src/main.ts
 ```
 
-Permission sets are defined in `deno.jsonc` under the `permissions` key and provide:
+Permission sets are defined in `deno.jsonc` under the `permissions` key and
+provide:
 
 - Consistent permissions across development and production
 - Self-documenting security requirements
@@ -54,4 +56,5 @@ This repo contains GitHub Actions workflows reused by other repos:
 
 - Use Workload Identity Federation for GCP auth (no service account keys)
 - Hardcode GCP project/region in workflows (convention over configuration)
-- App repos call workflows with `uses: dmikalova/github-meta/.github/workflows/<name>@main`
+- App repos call workflows with
+  `uses: dmikalova/github-meta/.github/workflows/<name>@main`

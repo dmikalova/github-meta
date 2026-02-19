@@ -14,8 +14,8 @@ The app SHALL define its database schema in a declarative HCL file.
 #### Scenario: Schema scoped to app
 
 - **WHEN** defining the schema
-- **THEN** the schema SHALL only define tables in the app's dedicated PostgreSQL schema (e.g.,
-  `login`, `email_unsubscribe`)
+- **THEN** the schema SHALL only define tables in the app's dedicated PostgreSQL
+  schema (e.g., `login`, `email_unsubscribe`)
 
 ### Requirement: Atlas runnable locally
 
@@ -34,7 +34,8 @@ Developers SHALL be able to run Atlas commands locally for schema operations.
 #### Scenario: Deno task for local apply
 
 - **WHEN** an app has a database schema
-- **THEN** it SHALL provide a `deno task db:apply` that runs Atlas with the local DATABASE\_URL
+- **THEN** it SHALL provide a `deno task db:apply` that runs Atlas with the
+  local DATABASE\_URL
 
 ### Requirement: CI applies schema changes via Atlas
 
@@ -53,7 +54,8 @@ The workflow SHALL use Atlas to diff and apply schema changes during deploy.
 #### Scenario: Dev database for planning
 
 - **WHEN** Atlas plans migrations
-- **THEN** it uses an ephemeral Postgres container (`docker://postgres/15`) to validate the schema
+- **THEN** it uses an ephemeral Postgres container (`docker://postgres/15`) to
+  validate the schema
 
 ### Requirement: Schema changes applied automatically
 
@@ -77,12 +79,14 @@ The workflow SHALL apply safe schema changes without manual intervention.
 
 ### Requirement: Schema apply runs before deploy
 
-The workflow SHALL execute schema changes after image push but before Cloud Run deploy.
+The workflow SHALL execute schema changes after image push but before Cloud Run
+deploy.
 
 #### Scenario: Pipeline order
 
 - **WHEN** the full pipeline runs
-- **THEN** the order is: lint → test → build → publish → schema lint → schema apply → deploy
+- **THEN** the order is: lint → test → build → publish → schema lint → schema
+  apply → deploy
 
 #### Scenario: Schema lint failure blocks deploy
 
@@ -120,5 +124,5 @@ The workflow SHALL fetch the database connection string from GCP Secret Manager.
 #### Scenario: Service account has access
 
 - **WHEN** the workflow fetches the secret
-- **THEN** the GitHub Actions deploy service account has `secretmanager.secretAccessor` role on the
-  secret
+- **THEN** the GitHub Actions deploy service account has
+  `secretmanager.secretAccessor` role on the secret

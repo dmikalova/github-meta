@@ -4,7 +4,8 @@
 
 ### Requirement: Pipeline provides lint function
 
-The Dagger module SHALL provide a `lint` function that runs `deno lint` on the source directory.
+The Dagger module SHALL provide a `lint` function that runs `deno lint` on the
+source directory.
 
 #### Scenario: Lint passes
 
@@ -18,8 +19,8 @@ The Dagger module SHALL provide a `lint` function that runs `deno lint` on the s
 
 ### Requirement: Pipeline provides check function
 
-The Dagger module SHALL provide a `check` function that runs `deno check` for TypeScript type
-checking.
+The Dagger module SHALL provide a `check` function that runs `deno check` for
+TypeScript type checking.
 
 #### Scenario: Type check passes
 
@@ -47,8 +48,8 @@ The Dagger module SHALL provide a `test` function that runs `deno task test`.
 
 ### Requirement: Pipeline provides build function
 
-The Dagger module SHALL provide a `build` function that compiles the Deno app to a standalone binary
-and packages it in a minimal container.
+The Dagger module SHALL provide a `build` function that compiles the Deno app to
+a standalone binary and packages it in a minimal container.
 
 #### Scenario: Build produces container
 
@@ -67,7 +68,8 @@ and packages it in a minimal container.
 
 ### Requirement: Pipeline provides publish function
 
-The Dagger module SHALL provide a `publish` function that pushes a container to GHCR.
+The Dagger module SHALL provide a `publish` function that pushes a container to
+GHCR.
 
 #### Scenario: Image pushed to GHCR
 
@@ -81,7 +83,8 @@ The Dagger module SHALL provide a `publish` function that pushes a container to 
 
 ### Requirement: Pipeline provides deploy function
 
-The Dagger module SHALL provide a `deploy` function that deploys a container to Cloud Run.
+The Dagger module SHALL provide a `deploy` function that deploys a container to
+Cloud Run.
 
 #### Scenario: Deploy to Cloud Run
 
@@ -95,7 +98,8 @@ The Dagger module SHALL provide a `deploy` function that deploys a container to 
 
 ### Requirement: Pipeline reads config from source
 
-The Dagger module SHALL read `mklv.config.mts` from the source directory to get app configuration.
+The Dagger module SHALL read `mklv.config.mts` from the source directory to get
+app configuration.
 
 #### Scenario: Config parsed at runtime
 
