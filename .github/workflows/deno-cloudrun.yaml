@@ -9,7 +9,7 @@
 #       uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main
 #       secrets: inherit
 
-name: Deno Cloud Run Deploy
+name: Deno CI/CD Pipeline
 
 on:
   workflow_call:
@@ -22,8 +22,8 @@ env:
   WIF_SERVICE_ACCOUNT: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
 
 jobs:
-  pipeline:
-    name: CI/CD Pipeline
+  deno:
+    name: Deno
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-${{ github.workflow }}

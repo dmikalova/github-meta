@@ -9,7 +9,7 @@
 #       uses: dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main
 #       secrets: inherit
 
-name: Terramate Apply All
+name: Terramate Apply All CI/CD Pipeline
 
 on:
   workflow_call:
@@ -23,7 +23,7 @@ env:
 
 jobs:
   terramate-apply-all:
-    name: Apply All
+    name: Terramate Apply All
     runs-on: ubuntu-latest
     concurrency:
       group: terramate-apply
