@@ -18,7 +18,7 @@ workflows calling non-existent infrastructure. Need a reusable, opinionated pipe
 - Use GHCR for container images (free for public repos)
 - Run migrations as dedicated pipeline step before deploy
 - Integrate semantic-release for automated versioning from conventional commits
-- App repos call reusable workflow with ~5 lines of config
+- App repos call reusable workflow with \~5 lines of config
 - App repos define `mklv.config.mts` with typed schema for all deployment settings
 
 ## Capabilities

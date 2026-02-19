@@ -9,51 +9,51 @@ scope, and Node.js repo support are noted below.
 ## Security
 
 - [x] **Remote config fetch over HTTPS** → The `extends` URL uses HTTPS from GitHub, which is
-      secure. No action needed.
+  secure. No action needed.
 - [x] **Secret detection needs tooling** → Spec mentions secret detection but doesn't specify how.
-      Will use `gitleaks` (standard tool). **Address in tasks.**
+  Will use `gitleaks` (standard tool). **Address in tasks.**
 
 ## Patterns
 
 - [x] **Consistent with existing workflows** → Pre-commit checks mirror what CI does (lint, fmt,
-      test), maintaining consistency. No issues.
+  test), maintaining consistency. No issues.
 
 ## Alternatives
 
 - [ ] **Consider `gitleaks` for secret detection** → Rather than custom regex patterns, use
-      `gitleaks` which has comprehensive patterns and is actively maintained. **Address in tasks** -
-      integrate gitleaks as the secret detection mechanism.
+  `gitleaks` which has comprehensive patterns and is actively maintained. **Address in tasks** -
+  integrate gitleaks as the secret detection mechanism.
 
 ## Simplifications
 
 - [x] **Test execution scope** → Tests are fast enough to stay in pre-commit. No change needed.
 - [x] **Terraform stack discovery** → Use Terramate for easy discovery:
-      `terramate run -- tofu fmt -check` and `terramate run -- tofu validate`. **Address in tasks.**
+  `terramate run -- tofu fmt -check` and `terramate run -- tofu validate`. **Address in tasks.**
 
 ## Missing Considerations
 
 - [x] **No Node.js/npm repo support yet** → Design mentions it as future but proposal doesn't scope
-      it out. **Defer** - explicitly out of scope for v1.
+  it out. **Defer** - explicitly out of scope for v1.
 - [x] **lefthook installation mechanism** → Need to document how repos install lefthook (npm
-      postinstall vs manual). **Address in tasks** - include setup documentation.
+  postinstall vs manual). **Address in tasks** - include setup documentation.
 - [x] **CI parity** → Pre-commit runs same checks as CI. Running on all files (not staged) ensures
-      identical behavior. **Address in design.**
+  identical behavior. **Address in design.**
 - [x] **All files not staged** → Run checks on entire repo for CI parity. **Address in tasks.**
 - [x] **Prohibited file types** → Block .sh scripts, require TypeScript. **Address in tasks.**
 
 ## Valuable Additions
 
 - [x] **Commit message linting** → Add conventional commit format checking via commitlint. **Address
-      in tasks.**
+  in tasks.**
 - [x] **Spell checking** → Add `typos` for fast code spell checking. **Address in tasks.**
 - [x] **Markdown linting** → Add `markdownlint` for documentation quality. **Address in tasks.**
 - [x] **Insensitive writing check** → Add `alex` to catch insensitive/ inconsiderate language.
-      **Address in tasks.**
+  **Address in tasks.**
 - [x] **Code spell checking** → Add `cspell` for code-aware dictionaries. **Address in tasks.**
 - [x] **Merge conflict detection** → Check for unresolved merge markers. **Address in tasks.**
 - [x] **Private key detection** → Detect accidental private key commits. **Address in tasks.**
 - [x] **Better formatters** → Explore Biome as opinionated, fast alternative to Prettier. **Address
-      in design.**
+  in design.**
 
 ## Action Items
 

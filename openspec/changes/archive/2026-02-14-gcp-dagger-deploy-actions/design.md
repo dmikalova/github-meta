@@ -78,8 +78,8 @@ return dag
 
 **Alternatives considered:**
 
-- Full Deno image (~350MB): Too large, slow pulls
-- Alpine + Deno: Still needs runtime, ~150MB
+- Full Deno image (\~350MB): Too large, slow pulls
+- Alpine + Deno: Still needs runtime, \~150MB
 - Cloud Run source deploy: Less control, slower builds
 
 **Rationale:** Smallest possible image. Single static binary with no runtime dependencies. Fast cold
@@ -253,13 +253,13 @@ The reusable workflow:
 2. Authenticates to GCP using WIF (hardcoded provider/SA)
 3. Runs Dagger pipeline which reads app config for name, entrypoint, runtime
 
-**Rationale:** ~5 lines in app repo. App config is purely about the app, not infrastructure.
+**Rationale:** \~5 lines in app repo. App config is purely about the app, not infrastructure.
 
 ## Risks / Trade-offs
 
 | Risk                            | Mitigation                                    |
 | ------------------------------- | --------------------------------------------- |
-| Dagger cold start (~30s)        | Built-in caching, acceptable for CI           |
+| Dagger cold start (\~30s)       | Built-in caching, acceptable for CI           |
 | Migration failures block deploy | Intentional - fail fast is correct behavior   |
 | Reusable workflow versioning    | Pin to `@main`, create tags for stability     |
 | GHCR rate limits                | Generous for public repos, cache in Dagger    |

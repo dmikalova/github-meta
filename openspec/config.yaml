@@ -1,34 +1,41 @@
 schema: spec-driven-review
 
 # Project context
+
 context: |
-  # Tech Stack
-  - Runtime: Deno 2.0+ with TypeScript
-  - Packages: npm packages published to GitHub Packages
-  - CI/CD: Dagger pipelines called from GitHub Actions workflows
 
-  # Purpose
-  - Reusable GitHub Actions workflows for other repos
-  - Dagger CI/CD pipelines (Deno-based)
-  - Shared npm packages (semantic-release-config)
-  - Repository standards and conventions
+# Tech Stack
 
-  # Reusable Workflows
-  - deno-cloudrun.yaml: Build and deploy Deno apps to Cloud Run via Dagger
-  - npm-packages.yaml: Publish npm packages to GitHub Packages
-  - terramate-apply-all.yaml: Apply Terramate stacks in infrastructure repo
+- Runtime: Deno 2.0+ with TypeScript
+- Packages: npm packages published to GitHub Packages
+- CI/CD: Dagger pipelines called from GitHub Actions workflows
 
-  # Conventions
-  - Workflows use Workload Identity Federation for GCP auth
-  - Dagger pipelines are Deno-based TypeScript
-  - Packages are scoped to @dmikalova org
+# Purpose
+
+- Reusable GitHub Actions workflows for other repos
+- Dagger CI/CD pipelines (Deno-based)
+- Shared npm packages (semantic-release-config)
+- Repository standards and conventions
+
+# Reusable Workflows
+
+- deno-cloudrun.yaml: Build and deploy Deno apps to Cloud Run via Dagger
+- npm-packages.yaml: Publish npm packages to GitHub Packages
+- terramate-apply-all.yaml: Apply Terramate stacks in infrastructure repo
+
+# Conventions
+
+- Workflows use Workload Identity Federation for GCP auth
+- Dagger pipelines are Deno-based TypeScript
+- Packages are scoped to @dmikalova org
 
 # Per-artifact rules
+
 rules:
-  spec:
-    - Focus on reusability across repos
-    - Consider workflow inputs and secrets requirements
-    - Document required permissions and setup
-  tasks:
-    - Test workflows in a branch before merging
-    - Include version bumps for published packages
+spec:
+\- Focus on reusability across repos
+\- Consider workflow inputs and secrets requirements
+\- Document required permissions and setup
+tasks:
+\- Test workflows in a branch before merging
+\- Include version bumps for published packages

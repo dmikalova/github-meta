@@ -3,14 +3,14 @@
 ## 1. Infrastructure
 
 - [x] 1.1 Verify GitHub Actions deploy SA has `secretmanager.secretAccessor` on `login-database-url`
-      secret
+  secret
 - [x] 1.2 Run `tofu plan` in `gcp/apps/login` to confirm no changes needed
 
 ## 2. Reusable Workflow
 
 - [x] 2.1 Update `deno-cloudrun.yaml` to add Atlas schema apply step after image publish
 - [x] 2.2 Add conditional check to skip Atlas if `db/schema.hcl` doesn't exist
-- [x] 2.3 Fetch DATABASE_URL from Secret Manager using `gcloud secrets versions access`
+- [x] 2.3 Fetch DATABASE\_URL from Secret Manager using `gcloud secrets versions access`
 - [x] 2.4 Add `ariga/atlas-action/schema/apply@v1` action with lint for destructive changes
 
 ## 3. Login App

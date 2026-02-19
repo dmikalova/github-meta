@@ -43,9 +43,9 @@ workflow, following the same pattern as `deno-cloudrun.yaml`.
 
 **Alternatives considered**:
 
-- _Workflow in the infrastructure repo directly_: Simpler but breaks the centralized workflow
+- *Workflow in the infrastructure repo directly*: Simpler but breaks the centralized workflow
   pattern. All reusable workflows live in github-meta.
-- _Composite action_: Less flexible — can't define full jobs, permissions, or concurrency.
+- *Composite action*: Less flexible — can't define full jobs, permissions, or concurrency.
 
 **Rationale**: Consistent with the existing pattern. Infrastructure repo calls the reusable workflow
 with `secrets: inherit`, same as email-unsubscribe calls deno-cloudrun.
@@ -59,10 +59,10 @@ provider configuration without changes.
 
 **Alternatives considered**:
 
-- _Change provider config to use `github-actions-infra` directly_: Would require updating all
+- *Change provider config to use `github-actions-infra` directly*: Would require updating all
   generated `_terraform.tf` files and break local development where developers use `tofu-ci`
   impersonation.
-- _Give `github-actions-infra` all the same roles as `tofu-ci` and remove impersonation_: Duplicates
+- *Give `github-actions-infra` all the same roles as `tofu-ci` and remove impersonation*: Duplicates
   role management and diverges local vs CI behavior.
 
 **Rationale**: The impersonation chain (`WIF → github-actions-infra → tofu-ci`) keeps provider
@@ -76,8 +76,8 @@ to main. No PR-based plan step — changes are merged directly to main and appli
 
 **Alternatives considered**:
 
-- _Plan on PR, apply on merge_: Adds a review step but this repo uses direct-to-main workflow.
-- _Apply requires manual approval_: More safety but adds friction for a single-maintainer repo.
+- *Plan on PR, apply on merge*: Adds a review step but this repo uses direct-to-main workflow.
+- *Apply requires manual approval*: More safety but adds friction for a single-maintainer repo.
 
 **Rationale**: For a personal infrastructure repo with a direct-to-main workflow, automatic apply is
 appropriate. Plan output is visible in the Actions log for debugging.
@@ -89,9 +89,9 @@ appropriate. Plan output is visible in the Actions log for debugging.
 
 **Alternatives considered**:
 
-- _`disable = true` on stacks_: Terramate doesn't support disable as a default exclusion mechanism.
+- *`disable = true` on stacks*: Terramate doesn't support disable as a default exclusion mechanism.
   The `manual` tag is more explicit and flexible.
-- _Path-based exclusion_: Fragile and doesn't scale as new providers are added.
+- *Path-based exclusion*: Fragile and doesn't scale as new providers are added.
 
 **Rationale**: Tags are the Terramate-native filtering mechanism. The `manual` tag clearly
 communicates intent — stacks that require manual intervention (e.g., IP whitelisting) are excluded
@@ -110,10 +110,10 @@ the Age key.
 
 **Alternatives considered**:
 
-- _GitHub Actions secret (`SOPS_AGE_KEY`)_: Would need to be added to every repo that calls the
+- *GitHub Actions secret (`SOPS_AGE_KEY`)*: Would need to be added to every repo that calls the
   workflow, and is harder to rotate.
-- _GCP KMS for SOPS_: Would require re-encrypting all existing secrets and changing the SOPS config.
-- _Manual `gcloud secrets versions add`_: Works but the secret value wouldn't be managed in
+- *GCP KMS for SOPS*: Would require re-encrypting all existing secrets and changing the SOPS config.
+- *Manual `gcloud secrets versions add`*: Works but the secret value wouldn't be managed in
   OpenTofu, creating drift risk.
 
 **Rationale**: Managing the secret in OpenTofu keeps it in the IaC lifecycle — rotating the Age key
@@ -128,8 +128,8 @@ runs `tofu init` + `tofu apply -auto-approve`, while the existing `apply` script
 
 **Alternatives considered**:
 
-- _Modify the existing `apply` script_: Would change local behavior.
-- _Pass `-auto-approve` via workflow command line_: Less repeatable and not captured in Terramate
+- *Modify the existing `apply` script*: Would change local behavior.
+- *Pass `-auto-approve` via workflow command line*: Less repeatable and not captured in Terramate
   config.
 
 **Rationale**: Separating `apply` (interactive) from `cicd` (non-interactive) keeps local and CI
@@ -143,8 +143,8 @@ successful apply.
 
 **Alternatives considered**:
 
-- _Skip versioning_: Loses traceability of infrastructure changes.
-- _Manual tagging_: Error-prone and inconsistent.
+- *Skip versioning*: Loses traceability of infrastructure changes.
+- *Manual tagging*: Error-prone and inconsistent.
 
 **Rationale**: Consistent with the deno-cloudrun workflow. Provides an audit trail of infrastructure
 changes via GitHub releases.
@@ -158,8 +158,8 @@ cicd`.
 
 **Alternatives considered**:
 
-- _Scheduled plan-only with drift alerting_: More conservative but doesn't auto-fix drift.
-- _Daily schedule_: Too frequent for a personal project.
+- *Scheduled plan-only with drift alerting*: More conservative but doesn't auto-fix drift.
+- *Daily schedule*: Too frequent for a personal project.
 
 **Rationale**: Auto-applying on schedule reconciles any drift automatically. Monday midnight UTC
 catches weekend drift. Manual dispatch enables on-demand runs when needed.

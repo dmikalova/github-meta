@@ -11,10 +11,10 @@ The Dagger module SHALL provide a `migrate` function that runs database migratio
 - **WHEN** the pipeline runs migrate
 - **THEN** it executes `deno task migrate` in a Deno container
 
-#### Scenario: DATABASE_URL injected
+#### Scenario: DATABASE\_URL injected
 
 - **WHEN** migrations run
-- **THEN** the DATABASE_URL secret is available as an environment variable
+- **THEN** the DATABASE\_URL secret is available as an environment variable
 
 ### Requirement: Migrations run before deploy
 

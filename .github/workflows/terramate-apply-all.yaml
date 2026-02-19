@@ -1,107 +1,119 @@
 # Terramate Apply All - Reusable CI/CD Workflow
+
 #
+
 # Applies all non-manual Terramate stacks using OpenTofu with auto-approve.
+
 # Authenticates via WIF, decrypts SOPS secrets via Age key from Secret Manager.
+
 #
+
 # Usage in infrastructure repo:
-#   jobs:
-#     apply:
-#       uses: dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main
-#       secrets: inherit
+
+# jobs:
+
+# apply:
+
+# uses: dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml\@main
+
+# secrets: inherit
 
 name: Terramate Apply All
 
 on:
-  workflow_call:
+workflow\_call:
 
 # Hardcoded GCP configuration (convention over configuration)
+
 env:
-  GCP_PROJECT: mklv-infrastructure
-  GCP_REGION: us-west1
-  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
-  WIF_SERVICE_ACCOUNT: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
+GCP\_PROJECT: mklv-infrastructure
+GCP\_REGION: us-west1
+WIF\_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+WIF\_SERVICE\_ACCOUNT: <github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com>
 
 jobs:
-  terramate-apply-all:
-    name: Apply All
-    runs-on: ubuntu-latest
-    concurrency:
-      group: terramate-apply
-      cancel-in-progress: false
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+terramate-apply-all:
+name: Apply All
+runs-on: ubuntu-latest
+concurrency:
+group: terramate-apply
+cancel-in-progress: false
+permissions:
+contents: write
+id-token: write
+steps:
+\- name: Checkout
+uses: actions/checkout\@v4
+with:
+fetch-depth: 0
 
-      - name: GCP Auth
-        uses: google-github-actions/auth@v2
-        with:
-          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+```
+  - name: GCP Auth
+    uses: google-github-actions/auth@v2
+    with:
+      service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+      workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: OpenTofu Install
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_wrapper: false
+  - name: OpenTofu Install
+    uses: opentofu/setup-opentofu@v1
+    with:
+      tofu_wrapper: false
 
-      - name: SOPS Install
-        run: |
-          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64"
-          chmod +x /tmp/sops
-          sudo mv /tmp/sops /usr/local/bin/sops
+  - name: SOPS Install
+    run: |
+      curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64"
+      chmod +x /tmp/sops
+      sudo mv /tmp/sops /usr/local/bin/sops
 
-      - name: SOPS Get Age Key
-        run: |
-          SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project=${{ env.GCP_PROJECT }})
-          echo "::add-mask::$(echo "$SOPS_AGE_KEY" | tail -1)"
-          {
-            echo "SOPS_AGE_KEY<<EOF"
-            echo "$SOPS_AGE_KEY"
-            echo "EOF"
-          } >> $GITHUB_ENV
+  - name: SOPS Get Age Key
+    run: |
+      SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project=${{ env.GCP_PROJECT }})
+      echo "::add-mask::$(echo "$SOPS_AGE_KEY" | tail -1)"
+      {
+        echo "SOPS_AGE_KEY<<EOF"
+        echo "$SOPS_AGE_KEY"
+        echo "EOF"
+      } >> $GITHUB_ENV
 
-      - name: Terramate Install
-        uses: terramate-io/terramate-action@v2
+  - name: Terramate Install
+    uses: terramate-io/terramate-action@v2
 
-      - name: Tofu Provider Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.tofu.d/plugin-cache
-          key: tofu-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
-          restore-keys: tofu-providers-
+  - name: Tofu Provider Cache
+    uses: actions/cache@v4
+    with:
+      path: ~/.tofu.d/plugin-cache
+      key: tofu-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+      restore-keys: tofu-providers-
 
-      - name: Terramate Apply All Stacks
-        run: |
-          # Override GITHUB_TOKEN with decrypted value from SOPS secrets
-          export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
+  - name: Terramate Apply All Stacks
+    run: |
+      # Override GITHUB_TOKEN with decrypted value from SOPS secrets
+      export GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
 
-          # Set cache directory for OpenTofu providers
-          export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
-          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+      # Set cache directory for OpenTofu providers
+      export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
+      mkdir -p "$TF_PLUGIN_CACHE_DIR"
 
-          terramate script run --no-tags=manual cicd
+      terramate script run --no-tags=manual cicd
 
-      - name: NPM Cache
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-semantic-release-${{ runner.os }}
+  - name: NPM Cache
+    if: github.ref == 'refs/heads/main'
+    uses: actions/cache@v4
+    with:
+      path: ~/.npm
+      key: npm-semantic-release-${{ runner.os }}
 
-      - name: NPM Authn
-        if: github.ref == 'refs/heads/main'
-        run: |
-          cp .npmrc $HOME/.npmrc
+  - name: NPM Authn
+    if: github.ref == 'refs/heads/main'
+    run: |
+      cp .npmrc $HOME/.npmrc
 
-      - name: Semantic Release
-        if: github.ref == 'refs/heads/main'
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          extends: '@dmikalova/semantic-release-config'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+  - name: Semantic Release
+    if: github.ref == 'refs/heads/main'
+    uses: cycjimmy/semantic-release-action@v4
+    with:
+      extends: '@dmikalova/semantic-release-config'
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+```

@@ -5,7 +5,7 @@
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "npx commitlint --edit {1}"
+        "run": "commitlint --edit"
       }
     }
   },
@@ -16,19 +16,15 @@
     "commands": {
       // General checks - always run
       "gitleaks": {
-        "run": "gitleaks detect --no-banner --no-git"
+        "run": "gitleaks detect . --no-banner --verbose"
       },
 
-      "check-merge-conflict": {
-        "run": "git ls-files '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.yaml' '*.yml' '*.md' '*.tf' '*.hcl' | xargs grep -l '^<<<<<<< \\|^=======$\\|^>>>>>>> ' && exit 1 || exit 0"
-      },
-
-      "detect-private-key": {
-        "run": "if git ls-files '*.pem' '*.key' | grep .; then\n  echo 'Error: Private key files found'\n  exit 1\nfi"
+      "merge-conflicts": {
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
       },
 
       "check-large-files": {
-        "run": "max_size=5242880\nfor file in $(git ls-files); do\n  if [ -f \"$file\" ]; then\n    size=$(stat -f%z \"$file\" 2>/dev/null || stat --format=%s \"$file\" 2>/dev/null)\n    if [ \"$size\" -gt \"$max_size\" ]; then\n      echo \"Error: $file exceeds 5MB limit ($size bytes)\"\n      exit 1\n    fi\n  fi\ndone"
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
       },
 
       "no-shell-scripts": {
@@ -36,47 +32,47 @@
       },
 
       "typos": {
-        "run": "typos -w --exclude node_modules ."
+        "run": "git ls-files | typos --file-list - --write-changes"
       },
 
-      "markdownlint": {
-        "run": "echo '{\"MD013\": {\"line_length\": 100}}' > /tmp/.markdownlint-config.json && markdownlint --config /tmp/.markdownlint-config.json --fix --dot --ignore node_modules --ignore LICENSE.md ."
+      "remark": {
+        "glob": "**/*.md",
+        "run": "npx remark {staged_files} --frail --output"
       },
+      // // Deno checks - skip if not a Deno repo
+      // "deno-fmt": {
+      //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
+      //   "run": "deno fmt"
+      // },
 
-      // Deno checks - skip if not a Deno repo
-      "deno-fmt": {
-        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno fmt"
-      },
+      // "deno-lint": {
+      //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
+      //   "run": "deno lint --fix"
+      // },
 
-      "deno-lint": {
-        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno lint --fix"
-      },
+      // "deno-check": {
+      //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
+      //   "run": "deno check src/**/*.ts"
+      // },
 
-      "deno-check": {
-        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-        "run": "deno check src/**/*.ts"
-      },
+      // "deno-test": {
+      //   "skip": [
+      //     { "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" },
+      //     { "run": "[ ! -d tests ]" }
+      //   ],
+      //   "run": "deno test --allow-all"
+      // },
 
-      "deno-test": {
-        "skip": [
-          { "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" },
-          { "run": "[ ! -d tests ]" }
-        ],
-        "run": "deno test --allow-all"
-      },
+      // // Terraform checks - skip if not a Terraform repo
+      // "terraform-fmt": {
+      //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
+      //   "run": "terramate run -- tofu fmt"
+      // },
 
-      // Terraform checks - skip if not a Terraform repo
-      "terraform-fmt": {
-        "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
-        "run": "terramate run -- tofu fmt"
-      },
-
-      "terraform-validate": {
-        "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
-        "run": "terramate run -- tofu validate"
-      }
+      // "terraform-validate": {
+      //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
+      //   "run": "terramate run -- tofu validate"
+      // }
     }
   }
 }

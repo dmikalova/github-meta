@@ -17,7 +17,7 @@
 - [ ] 2.1 Add commit-msg hook with commitlint
 - [ ] 2.2 Create commitlint config for conventional commits
 - [ ] 2.3 Configure allowed commit types (feat, fix, docs, style, refactor, test, chore, ci, perf,
-      build, revert)
+  build, revert)
 - [ ] 2.4 Test commit-msg hook blocks invalid messages
 
 ## 3. Deno Checks

@@ -1,219 +1,231 @@
 # Deno Cloud Run Deploy - Reusable CI/CD Workflow
+
 #
+
 # This workflow provides opinionated CI/CD for Deno apps deploying to GCP Cloud Run.
+
 # CI: lint → check → test, CD: deno compile → buildah → GHCR → Cloud Run
+
 #
+
 # Usage in app repo:
-#   jobs:
-#     deploy:
-#       uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main
-#       secrets: inherit
+
+# jobs:
+
+# deploy:
+
+# uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml\@main
+
+# secrets: inherit
 
 name: Deno Cloud Run Deploy
 
 on:
-  workflow_call:
+workflow\_call:
 
 # Hardcoded GCP configuration (convention over configuration)
+
 env:
-  GCP_PROJECT: mklv-infrastructure
-  GCP_REGION: us-west1
-  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
-  WIF_SERVICE_ACCOUNT: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
+GCP\_PROJECT: mklv-infrastructure
+GCP\_REGION: us-west1
+WIF\_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+WIF\_SERVICE\_ACCOUNT: <github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com>
 
 jobs:
-  pipeline:
-    name: CI/CD Pipeline
-    runs-on: ubuntu-latest
-    concurrency:
-      group: deploy-${{ github.workflow }}
-      cancel-in-progress: false
-    permissions:
-      contents: write
-      id-token: write
-      packages: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full history for semantic-release
+pipeline:
+name: CI/CD Pipeline
+runs-on: ubuntu-latest
+concurrency:
+group: deploy-${{ github.workflow }}
+cancel-in-progress: false
+permissions:
+contents: write
+id-token: write
+packages: write
+steps:
+\- name: Checkout
+uses: actions/checkout\@v4
+with:
+fetch-depth: 0 # Full history for semantic-release
 
-      - name: NPM Authn
-        if: github.ref == 'refs/heads/main'
-        run: |
-          cp .npmrc $HOME/.npmrc
+```
+  - name: NPM Authn
+    if: github.ref == 'refs/heads/main'
+    run: |
+      cp .npmrc $HOME/.npmrc
 
-      - name: Cache Git Objects
-        uses: actions/cache@v4
-        with:
-          path: .git/objects
-          key: git-${{ github.repository }}-${{ github.ref_name }}
-          restore-keys: |
-            git-${{ github.repository }}-
+  - name: Cache Git Objects
+    uses: actions/cache@v4
+    with:
+      path: .git/objects
+      key: git-${{ github.repository }}-${{ github.ref_name }}
+      restore-keys: |
+        git-${{ github.repository }}-
 
-      - name: Deno Cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/deno
-          key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
-          restore-keys: |
-            deno-${{ runner.os }}-
+  - name: Deno Cache
+    uses: actions/cache@v4
+    with:
+      path: ~/.cache/deno
+      key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
+      restore-keys: |
+        deno-${{ runner.os }}-
 
-      - name: Deno Setup
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version-file: .deno-version
+  - name: Deno Setup
+    uses: denoland/setup-deno@v2
+    with:
+      deno-version-file: .deno-version
 
-      - name: Deno Install
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: deno install
+  - name: Deno Install
+    env:
+      NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+    run: deno install
 
-      - name: Deno Lint
-        run: deno lint
+  - name: Deno Lint
+    run: deno lint
 
-      - name: Deno Type Check
-        run: deno task check
+  - name: Deno Type Check
+    run: deno task check
 
-      - name: Deno Test
-        run: deno task test
+  - name: Deno Test
+    run: deno task test
 
-      - name: NPM Cache
-        if: github.ref == 'refs/heads/main'
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-semantic-release-${{ runner.os }}
+  - name: NPM Cache
+    if: github.ref == 'refs/heads/main'
+    uses: actions/cache@v4
+    with:
+      path: ~/.npm
+      key: npm-semantic-release-${{ runner.os }}
 
-      - name: Semantic Release
-        id: release
-        if: github.ref == 'refs/heads/main'
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          extends: '@dmikalova/semantic-release-config'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+  - name: Semantic Release
+    id: release
+    if: github.ref == 'refs/heads/main'
+    uses: cycjimmy/semantic-release-action@v4
+    with:
+      extends: '@dmikalova/semantic-release-config'
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
 
-      - name: Release Info
-        id: info
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "name=$(jq -r .name mklv.config.json)" >> $GITHUB_OUTPUT
-          if [ "${{ steps.release.outputs.new_release_published }}" == "true" ]; then
-            echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
-          else
-            latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-            echo "version=${latest#v}" >> $GITHUB_OUTPUT
-          fi
+  - name: Release Info
+    id: info
+    if: github.ref == 'refs/heads/main'
+    run: |
+      echo "name=$(jq -r .name mklv.config.json)" >> $GITHUB_OUTPUT
+      if [ "${{ steps.release.outputs.new_release_published }}" == "true" ]; then
+        echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+      else
+        latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        echo "version=${latest#v}" >> $GITHUB_OUTPUT
+      fi
 
-      - name: Buildah Build
-        if: github.ref == 'refs/heads/main'
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: |
-          DENO_VERSION=$(cat .deno-version)
+  - name: Buildah Build
+    if: github.ref == 'refs/heads/main'
+    env:
+      NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+    run: |
+      DENO_VERSION=$(cat .deno-version)
 
-          # Build stage
-          BUILD=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
-          buildah config --workingdir /app $BUILD
-          buildah copy $BUILD $HOME/.npmrc /root/.npmrc
-          buildah copy $BUILD deno.lock deno.jsonc /app/
-          buildah copy $BUILD src /app/src
-          buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
+      # Build stage
+      BUILD=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
+      buildah config --workingdir /app $BUILD
+      buildah copy $BUILD $HOME/.npmrc /root/.npmrc
+      buildah copy $BUILD deno.lock deno.jsonc /app/
+      buildah copy $BUILD src /app/src
+      buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
 
-          # Artifact stage
-          ARTIFACT=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
-          buildah copy --from $BUILD $ARTIFACT /app /app
-          buildah copy --from $BUILD $ARTIFACT /deno-dir /deno-dir
-          buildah config --env DENO_DIR=/deno-dir $ARTIFACT
-          buildah config --workingdir /app $ARTIFACT
-          buildah config --cmd 'run --cached-only --permission-set src/main.ts' $ARTIFACT
-          buildah commit $ARTIFACT ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+      # Artifact stage
+      ARTIFACT=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
+      buildah copy --from $BUILD $ARTIFACT /app /app
+      buildah copy --from $BUILD $ARTIFACT /deno-dir /deno-dir
+      buildah config --env DENO_DIR=/deno-dir $ARTIFACT
+      buildah config --workingdir /app $ARTIFACT
+      buildah config --cmd 'run --cached-only --permission-set src/main.ts' $ARTIFACT
+      buildah commit $ARTIFACT ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
-      - name: GHCR Push
-        if: github.ref == 'refs/heads/main'
-        run: |
-          image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
-          buildah tag ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} $image
-          buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
-          buildah push $image
+  - name: GHCR Push
+    if: github.ref == 'refs/heads/main'
+    run: |
+      image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+      buildah tag ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} $image
+      buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+      buildah push $image
 
-      - name: GCP Authn
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/auth@v2
-        with:
-          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
-          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+  - name: GCP Authn
+    if: github.ref == 'refs/heads/main'
+    uses: google-github-actions/auth@v2
+    with:
+      service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+      workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Schema Setup
-        id: schema
-        if: github.ref == 'refs/heads/main'
-        run: |
-          # Check if schema file exists
-          if [ ! -f "db/schema.hcl" ]; then
-            echo "No db/schema.hcl found, skipping schema apply"
-            echo "skip=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+  - name: Schema Setup
+    id: schema
+    if: github.ref == 'refs/heads/main'
+    run: |
+      # Check if schema file exists
+      if [ ! -f "db/schema.hcl" ]; then
+        echo "No db/schema.hcl found, skipping schema apply"
+        echo "skip=true" >> $GITHUB_OUTPUT
+        exit 0
+      fi
 
-          # Schema name matches Terraform convention: replace dashes with underscores
-          schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
-          echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
+      # Schema name matches Terraform convention: replace dashes with underscores
+      schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
+      echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
 
-          # Fetch DATABASE_URL from Secret Manager
-          secret_name="${{ steps.info.outputs.name }}-database-url"
-          DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
-          echo "::add-mask::$DATABASE_URL"
-          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+      # Fetch DATABASE_URL from Secret Manager
+      secret_name="${{ steps.info.outputs.name }}-database-url"
+      DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+      echo "::add-mask::$DATABASE_URL"
+      echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
 
-      - name: Atlas Setup
-        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
-        uses: ariga/setup-atlas@v0
+  - name: Atlas Setup
+    if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+    uses: ariga/setup-atlas@v0
 
-      - name: Atlas Schema Check
-        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
-        run: |
-          echo "=== Debugging: Inspecting database schema '${{ steps.schema.outputs.schema_name }}' ==="
-          atlas schema inspect \
-            --url "${{ steps.schema.outputs.database_url }}" \
-            --schema "${{ steps.schema.outputs.schema_name }}" \
-            --format '{{ sql . "  " }}' || echo "Inspect failed"
+  - name: Atlas Schema Check
+    if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+    run: |
+      echo "=== Debugging: Inspecting database schema '${{ steps.schema.outputs.schema_name }}' ==="
+      atlas schema inspect \
+        --url "${{ steps.schema.outputs.database_url }}" \
+        --schema "${{ steps.schema.outputs.schema_name }}" \
+        --format '{{ sql . "  " }}' || echo "Inspect failed"
 
-          echo ""
-          echo "=== Diffing schema ==="
-          atlas schema diff \
-            --from "${{ steps.schema.outputs.database_url }}" \
-            --to file://db/schema.hcl \
-            --dev-url "docker://postgres/15/dev?search_path=public" \
-            --schema "${{ steps.schema.outputs.schema_name }}" \
-            --format '{{ sql . "  " }}' > /tmp/migration.sql
+      echo ""
+      echo "=== Diffing schema ==="
+      atlas schema diff \
+        --from "${{ steps.schema.outputs.database_url }}" \
+        --to file://db/schema.hcl \
+        --dev-url "docker://postgres/15/dev?search_path=public" \
+        --schema "${{ steps.schema.outputs.schema_name }}" \
+        --format '{{ sql . "  " }}' > /tmp/migration.sql
 
-          echo "Planned changes:"
-          cat /tmp/migration.sql
+      echo "Planned changes:"
+      cat /tmp/migration.sql
 
-          # Check for destructive changes
-          if grep -qiE "DROP (TABLE|COLUMN|INDEX|CONSTRAINT)" /tmp/migration.sql; then
-            echo "::error::Destructive changes detected! Apply manually with 'deno task db:apply' then push again."
-            exit 1
-          fi
+      # Check for destructive changes
+      if grep -qiE "DROP (TABLE|COLUMN|INDEX|CONSTRAINT)" /tmp/migration.sql; then
+        echo "::error::Destructive changes detected! Apply manually with 'deno task db:apply' then push again."
+        exit 1
+      fi
 
-      - name: Atlas Schema Apply
-        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
-        run: |
-          atlas schema apply \
-            --url "${{ steps.schema.outputs.database_url }}" \
-            --to file://db/schema.hcl \
-            --dev-url "docker://postgres/15/dev?search_path=public" \
-            --schema "${{ steps.schema.outputs.schema_name }}" \
-            --auto-approve
+  - name: Atlas Schema Apply
+    if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+    run: |
+      atlas schema apply \
+        --url "${{ steps.schema.outputs.database_url }}" \
+        --to file://db/schema.hcl \
+        --dev-url "docker://postgres/15/dev?search_path=public" \
+        --schema "${{ steps.schema.outputs.schema_name }}" \
+        --auto-approve
 
-      - name: Cloud Run Deploy
-        if: github.ref == 'refs/heads/main'
-        run: |
-          image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/ghcr/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
-          gcloud run deploy ${{ steps.info.outputs.name }} \
-            --image $image \
-            --region ${{ env.GCP_REGION }} \
-            --project ${{ env.GCP_PROJECT }} \
-            --quiet
+  - name: Cloud Run Deploy
+    if: github.ref == 'refs/heads/main'
+    run: |
+      image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/ghcr/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+      gcloud run deploy ${{ steps.info.outputs.name }} \
+        --image $image \
+        --region ${{ env.GCP_REGION }} \
+        --project ${{ env.GCP_PROJECT }} \
+        --quiet
+```

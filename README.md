@@ -21,9 +21,9 @@ Create `lefthook.jsonc`:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
+      "configs": ["lefthook.jsonc"],
+    },
+  ],
 }
 ```
 
@@ -54,9 +54,9 @@ Create `lefthook.jsonc`:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
+      "configs": ["lefthook.jsonc"],
+    },
+  ],
 }
 ```
 
@@ -65,8 +65,8 @@ Add setup task to `deno.jsonc`:
 ```jsonc
 {
   "tasks": {
-    "setup": "lefthook install"
-  }
+    "setup": "lefthook install",
+  },
 }
 ```
 
@@ -89,9 +89,9 @@ Create `lefthook.jsonc` in the repo root:
       "git_url": "https://github.com/dmikalova/github-meta",
       "ref": "main",
       "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
+      "configs": ["lefthook.jsonc"],
+    },
+  ],
 }
 ```
 

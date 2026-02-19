@@ -127,21 +127,21 @@ extends:
 
 ## Risks / Trade-offs
 
-**[Risk] Remote config fetch fails** → lefthook caches extended configs locally after first fetch.
+**\[Risk] Remote config fetch fails** → lefthook caches extended configs locally after first fetch.
 Developers can work offline after initial setup.
 
-**[Risk] Breaking change in base config** → Could break commits in all repos. Mitigation: Test base
+**\[Risk] Breaking change in base config** → Could break commits in all repos. Mitigation: Test base
 config changes carefully, consider versioned URLs for stability.
 
-**[Risk] Slow pre-commit on full repo** → Running on all files (not just staged) takes longer.
+**\[Risk] Slow pre-commit on full repo** → Running on all files (not just staged) takes longer.
 Mitigation: Parallel execution, caching where tools support it, tests are fast. Benefit is
 consistency - same as CI.
 
-**[Trade-off] Strict blocking vs warnings** → Chose strict blocking for quality. Developers can
+**\[Trade-off] Strict blocking vs warnings** → Chose strict blocking for quality. Developers can
 `--no-verify` for emergencies, but this is intentionally friction-full.
 
-**[Trade-off] All files vs staged only** → Chose all files for CI parity. Staged-only could miss
+**\[Trade-off] All files vs staged only** → Chose all files for CI parity. Staged-only could miss
 issues introduced by unstaged changes that interact with staged ones.
 
-**[Trade-off] Auto-detect vs explicit** → Auto-detect means less control but zero config. Chose
+**\[Trade-off] Auto-detect vs explicit** → Auto-detect means less control but zero config. Chose
 convention over configuration.

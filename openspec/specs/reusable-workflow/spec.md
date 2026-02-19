@@ -47,17 +47,17 @@ The workflow SHALL invoke the Dagger pipeline from github-meta.
 
 ### Requirement: Workflow passes secrets to Dagger
 
-The workflow SHALL pass required secrets (GITHUB_TOKEN, DATABASE_URL) to the Dagger pipeline.
+The workflow SHALL pass required secrets (GITHUB\_TOKEN, DATABASE\_URL) to the Dagger pipeline.
 
 #### Scenario: GitHub token available
 
 - **WHEN** Dagger needs to push to GHCR
-- **THEN** GITHUB_TOKEN is available as a Dagger secret
+- **THEN** GITHUB\_TOKEN is available as a Dagger secret
 
 #### Scenario: Database URL fetched for Atlas
 
 - **WHEN** Atlas needs to apply schema changes
-- **THEN** DATABASE_URL is fetched from GCP Secret Manager using `gcloud secrets versions access`
+- **THEN** DATABASE\_URL is fetched from GCP Secret Manager using `gcloud secrets versions access`
 
 ### Requirement: Workflow triggers on main branch push
 

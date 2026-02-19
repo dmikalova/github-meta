@@ -1,22 +1,5 @@
-export default {
-  extends: ['@commitlint/config-conventional'],
-  rules: {
-    'type-enum': [
-      2,
-      'always',
-      [
-        'feat',
-        'fix',
-        'docs',
-        'style',
-        'refactor',
-        'test',
-        'chore',
-        'ci',
-        'perf',
-        'build',
-        'revert',
-      ],
-    ],
-  },
-};
+/**
+ * Local commitlint config that extends the shared package.
+ * Consumer repos use: extends: ['@dmikalova/commitlint-config']
+ */
+export { default } from "./packages/commitlint-config/index.mjs";
