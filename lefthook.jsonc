@@ -5,9 +5,9 @@
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "commitlint --edit"
-      }
-    }
+        "run": "commitlint --edit",
+      },
+    },
   },
 
   "pre-commit": {
@@ -16,44 +16,45 @@
     "commands": {
       // General checks - always run
       "gitleaks": {
-        "run": "gitleaks detect . --log-level warn --no-banner --verbose"
+        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
       },
 
       "merge-conflicts": {
-        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0",
       },
 
       "check-large-files": {
-        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0",
       },
 
       "no-shell-scripts": {
-        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
       },
 
       "typos": {
-        "run": "git ls-files | typos --file-list - --write-changes"
+        "run": "git ls-files | typos --file-list - --write-changes",
       },
 
       "quickmark": {
         "glob": "**/*.md",
         "exclude": ["node_modules/**", "LICENSE.md", ".terraform/**"],
-        "run": "qmark {all_files}"
+        "run": "qmark {all_files}",
       },
 
       "deno-fmt": {
         "glob": "deno.json*",
-        "run": "deno fmt"
-      }
-      // "deno-lint": {
-      //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-      //   "run": "deno lint --fix"
-      // },
+        "run": "deno fmt",
+      },
 
-      // "deno-check": {
-      //   "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
-      //   "run": "deno check src/**/*.ts"
-      // },
+      "deno-lint": {
+        "glob": "deno.json*",
+        "run": "deno lint --fix",
+      },
+
+      "deno-check": {
+        "skip": [{ "run": "[ ! -f deno.json ] && [ ! -f deno.jsonc ]" }],
+        "run": "deno check src/**/*.ts"
+      },
 
       // "deno-test": {
       //   "skip": [
@@ -73,6 +74,6 @@
       //   "skip": [{ "run": "[ ! -f terramate.tm.hcl ]" }],
       //   "run": "terramate run -- tofu validate"
       // }
-    }
-  }
+    },
+  },
 }
