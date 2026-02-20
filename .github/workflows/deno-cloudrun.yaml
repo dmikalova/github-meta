@@ -161,32 +161,19 @@ jobs:
           schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
           echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
 
-          # Fetch DATABASE_URL from Secret Manager
-          secret_name="${{ steps.info.outputs.name }}-database-url"
-          DATABASE_URL=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
-          echo "::add-mask::$DATABASE_URL"
-          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
-
-      - name: Atlas Setup
-        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
-        uses: ariga/setup-atlas@v0
-
-      - name: Atlas Schema Check
-        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
-        run: |
-          echo "=== Debugging: Inspecting database schema '${{ steps.schema.outputs.schema_name }}' ==="
-          atlas schema inspect \
-            --url "${{ steps.schema.outputs.database_url }}" \
-            --schema "${{ steps.schema.outputs.schema_name }}" \
-            --format '{{ sql . "  " }}' || echo "Inspect failed"
+          # Fetch DATABASE_URL_SESSION from Secret Manager (session pooler for prepared statements)
+          secret_name="${{ steps.info.outputs.name }}-database-url-session"
+          DATABASE_URL_SESSION=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+          echo "::add-mask::$DATABASE_URL_SESSION"
+          echo "database_url_session=$DATABASE_URL_SESSION" >> $GITHUB_OUTPUT
 
           echo ""
           echo "=== Diffing schema ==="
           atlas schema diff \
-            --from "${{ steps.schema.outputs.database_url }}" \
+            --from "$DATABASE_URL_SESSION" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
-            --schema "${{ steps.schema.outputs.schema_name }}" \
+            --schema "$schema_name" \
             --format '{{ sql . "  " }}' > /tmp/migration.sql
 
           echo "Planned changes:"
@@ -202,7 +189,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
         run: |
           atlas schema apply \
-            --url "${{ steps.schema.outputs.database_url }}" \
+            --url "${{ steps.schema.outputs.database_url_session }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
             --schema "${{ steps.schema.outputs.schema_name }}" \
