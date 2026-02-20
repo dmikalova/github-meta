@@ -9,7 +9,7 @@
 #       uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main
 #       secrets: inherit
 
-name: Deno CI/CD Pipeline
+name: Deno CI/CD
 
 on:
   workflow_call:
