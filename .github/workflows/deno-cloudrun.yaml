@@ -146,7 +146,7 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Schema Setup
+      - name: DB Schema Setup
         id: schema
         if: github.ref == 'refs/heads/main'
         run: |
@@ -167,13 +167,26 @@ jobs:
           echo "::add-mask::$DATABASE_URL_SESSION"
           echo "database_url_session=$DATABASE_URL_SESSION" >> $GITHUB_OUTPUT
 
+      - name: Atlas Setup
+        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+        uses: ariga/setup-atlas@v0
+
+      - name: Atlas Schema Check
+        if: github.ref == 'refs/heads/main' && steps.schema.outputs.skip != 'true'
+        run: |
+          echo "=== Debugging: Inspecting database schema '${{ steps.schema.outputs.schema_name }}' ==="
+          atlas schema inspect \
+            --url "${{ steps.schema.outputs.database_url_session }}" \
+            --schema "${{ steps.schema.outputs.schema_name }}" \
+            --format '{{ sql . "  " }}' || echo "Inspect failed"
+
           echo ""
           echo "=== Diffing schema ==="
           atlas schema diff \
-            --from "$DATABASE_URL_SESSION" \
+            --from "${{ steps.schema.outputs.database_url_session }}" \
             --to file://db/schema.hcl \
             --dev-url "docker://postgres/15/dev?search_path=public" \
-            --schema "$schema_name" \
+            --schema "${{ steps.schema.outputs.schema_name }}" \
             --format '{{ sql . "  " }}' > /tmp/migration.sql
 
           echo "Planned changes:"
