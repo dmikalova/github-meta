@@ -119,16 +119,7 @@ jobs:
           buildah config --workingdir /app $BUILD
           buildah copy $BUILD $HOME/.npmrc /root/.npmrc
           buildah copy $BUILD deno.lock deno.jsonc /app/
-
-          # Copy api/ if it exists (legacy structure), otherwise src/
-          if [ -d "api" ]; then
-            buildah copy $BUILD api /app/api
-            ENTRYPOINT="api/main.ts"
-          else
-            buildah copy $BUILD src /app/src
-            ENTRYPOINT="src/main.ts"
-          fi
-
+          buildah copy $BUILD src /app/src
           buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
 
           # Artifact stage
@@ -137,7 +128,7 @@ jobs:
           buildah copy --from $BUILD $ARTIFACT /deno-dir /deno-dir
           buildah config --env DENO_DIR=/deno-dir $ARTIFACT
           buildah config --workingdir /app $ARTIFACT
-          buildah config --cmd "run --cached-only --permission-set $ENTRYPOINT" $ARTIFACT
+          buildah config --cmd "run --cached-only --permission-set src/main.ts" $ARTIFACT
           buildah commit $ARTIFACT ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
       - name: GHCR Push
