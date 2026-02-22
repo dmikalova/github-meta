@@ -114,19 +114,13 @@ jobs:
         run: |
           DENO_VERSION=$(cat .deno-version)
 
-          # Build frontend if src/deno.jsonc exists (Vue client)
-          if [ -f "src/deno.jsonc" ]; then
-            echo "Building frontend..."
-            deno task src:build
-          fi
-
           # Build stage
           BUILD=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
           buildah config --workingdir /app $BUILD
           buildah copy $BUILD $HOME/.npmrc /root/.npmrc
           buildah copy $BUILD deno.lock deno.jsonc /app/
 
-          # Copy api/ if it exists (new structure), otherwise src/ (legacy)
+          # Copy api/ if it exists (legacy structure), otherwise src/
           if [ -d "api" ]; then
             buildah copy $BUILD api /app/api
             ENTRYPOINT="api/main.ts"
