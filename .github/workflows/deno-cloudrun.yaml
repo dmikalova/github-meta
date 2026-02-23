@@ -69,6 +69,9 @@ jobs:
           NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
         run: deno install
 
+      - name: Deno Build
+        run: deno task build || echo "No build task defined, skipping"
+
       - name: Deno Lint
         run: deno lint
 
