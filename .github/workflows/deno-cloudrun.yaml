@@ -125,12 +125,17 @@ jobs:
           buildah copy $BUILD src /app/src
           buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
 
+          # Berglas binary (resolves berglas:// env vars at container start)
+          BERGLAS=$(buildah from gcr.io/berglas/berglas:latest)
+
           # Artifact stage
           ARTIFACT=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
           buildah copy --from $BUILD $ARTIFACT /app /app
           buildah copy --from $BUILD $ARTIFACT /deno-dir /deno-dir
+          buildah copy --from $BERGLAS $ARTIFACT /bin/berglas /bin/berglas
           buildah config --env DENO_DIR=/deno-dir $ARTIFACT
           buildah config --workingdir /app $ARTIFACT
+          buildah config --entrypoint '["/bin/berglas", "exec", "--", "deno"]' $ARTIFACT
           buildah config --cmd "run --cached-only --permission-set src/main.ts" $ARTIFACT
           buildah commit $ARTIFACT ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
