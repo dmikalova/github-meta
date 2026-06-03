@@ -154,6 +154,12 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
+      - name: Install Berglas
+        if: github.ref == 'refs/heads/main'
+        run: |
+          curl -sL "https://storage.googleapis.com/berglas/main/linux_amd64/berglas" -o /usr/local/bin/berglas
+          chmod +x /usr/local/bin/berglas
+
       - name: DB Schema Setup
         id: schema
         if: github.ref == 'refs/heads/main'
@@ -169,9 +175,9 @@ jobs:
           schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
           echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
 
-          # Fetch DATABASE_URL_SESSION from Secret Manager (session pooler for prepared statements)
+          # Fetch DATABASE_URL_SESSION from Berglas
           secret_name="${{ steps.info.outputs.name }}-database-url-session"
-          DATABASE_URL_SESSION=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+          DATABASE_URL_SESSION=$(berglas access "mklv-infrastructure-berglas/$secret_name")
           echo "::add-mask::$DATABASE_URL_SESSION"
           echo "database_url_session=$DATABASE_URL_SESSION" >> $GITHUB_OUTPUT
 
