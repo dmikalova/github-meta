@@ -118,24 +118,20 @@ jobs:
           DENO_VERSION=$(cat .deno-version)
 
           # Build stage
-          BUILD=$(buildah from docker.io/denoland/deno:${DENO_VERSION})
+          BUILD=$(buildah from ghcr.io/denoland/deno:${DENO_VERSION})
           buildah config --workingdir /app $BUILD
           buildah copy $BUILD $HOME/.npmrc /root/.npmrc
           buildah copy $BUILD deno.lock deno.jsonc /app/
           buildah copy $BUILD src /app/src
           buildah run --env NPM_TOKEN=$NPM_TOKEN $BUILD -- deno install
 
-          # Berglas binary (resolves berglas:// env vars at container start)
-          BERGLAS=$(buildah from gcr.io/berglas/berglas:latest)
-
           # Artifact stage
-          ARTIFACT=$(buildah from docker.io/denoland/deno:distroless-${DENO_VERSION})
+          ARTIFACT=$(buildah from ghcr.io/denoland/deno:distroless-${DENO_VERSION})
           buildah copy --from $BUILD $ARTIFACT /app /app
           buildah copy --from $BUILD $ARTIFACT /deno-dir /deno-dir
-          buildah copy --from $BERGLAS $ARTIFACT /bin/berglas /bin/berglas
           buildah config --env DENO_DIR=/deno-dir $ARTIFACT
           buildah config --workingdir /app $ARTIFACT
-          buildah config --entrypoint '["/bin/berglas", "exec", "--", "deno"]' $ARTIFACT
+          buildah config --entrypoint '["deno"]' $ARTIFACT
           buildah config --cmd "run --cached-only --permission-set src/main.ts" $ARTIFACT
           buildah commit $ARTIFACT ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
 
@@ -154,12 +150,6 @@ jobs:
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
-      - name: Install Berglas
-        if: github.ref == 'refs/heads/main'
-        run: |
-          curl -sL "https://storage.googleapis.com/berglas/main/linux_amd64/berglas" -o /usr/local/bin/berglas
-          chmod +x /usr/local/bin/berglas
-
       - name: DB Schema Setup
         id: schema
         if: github.ref == 'refs/heads/main'
@@ -175,9 +165,10 @@ jobs:
           schema_name=$(echo "${{ steps.info.outputs.name }}" | tr '-' '_')
           echo "schema_name=$schema_name" >> $GITHUB_OUTPUT
 
-          # Fetch DATABASE_URL_SESSION from Berglas
-          secret_name="${{ steps.info.outputs.name }}-database-url-session"
-          DATABASE_URL_SESSION=$(berglas access "mklv-infrastructure-berglas/$secret_name")
+          # Fetch DATABASE_URL_SESSION from the app's Secret Manager config
+          secret_name="${{ steps.info.outputs.name }}-config"
+          config_json=$(gcloud secrets versions access latest --secret="$secret_name" --project=${{ env.GCP_PROJECT }})
+          DATABASE_URL_SESSION=$(echo "$config_json" | jq -r '.DATABASE_URL_SESSION')
           echo "::add-mask::$DATABASE_URL_SESSION"
           echo "database_url_session=$DATABASE_URL_SESSION" >> $GITHUB_OUTPUT
 
