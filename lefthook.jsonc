@@ -62,6 +62,15 @@
         ]
       },
 
+      "deno-coverage": {
+        "run": "deno task test:all --coverage 2>&1 | tee /dev/stderr | grep '| All files' | grep -q '100.0.*100.0.*100.0'",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.ts' '*.test.ts' | grep -q ."
+          }
+        ]
+      },
+
       "markdown-lint": {
         "glob": "**/*.md",
         "run": "qmark {all_files}"
