@@ -12,6 +12,10 @@
   //   ],
   // }
 
+  // Disable TTY spinner to prevent cursor position report escape sequences
+  // from leaking into terminal output
+  "no_tty": true,
+
   "commit-msg": {
     "commands": {
       "commitlint": {
