@@ -1,0 +1,150 @@
+# Go Cloud Run Deploy - Reusable CI/CD Workflow
+#
+# This workflow provides opinionated CI/CD for Go apps deploying to GCP Cloud Run.
+# CI: fmt → vet → lint → test, CD: buildah (Dockerfile) → GHCR → Cloud Run
+#
+# Unlike the Deno workflow, Go apps never commit a .npmrc: the only npm consumer
+# is semantic-release (private @dmikalova config), so this workflow writes the
+# .npmrc at runtime from PKG_READ_TOKEN just before the release step.
+#
+# Usage in app repo:
+#   jobs:
+#     deploy:
+#       uses: dmikalova/github-meta/.github/workflows/go-cloudrun.yaml@main
+#       secrets: inherit
+
+name: Go CI/CD
+
+on:
+  workflow_call:
+
+# Hardcoded GCP configuration (convention over configuration)
+env:
+  GCP_PROJECT: mklv-infrastructure
+  GCP_REGION: us-west1
+  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_SERVICE_ACCOUNT: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
+
+jobs:
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.workflow }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Full history for semantic-release
+
+      - name: Cache Git Objects
+        uses: actions/cache@v5
+        with:
+          path: .git/objects
+          key: git-${{ github.repository }}-${{ github.ref_name }}
+          restore-keys: |
+            git-${{ github.repository }}-
+
+      - name: Go Setup
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Go Download
+        run: go mod download
+
+      # Convention: every Go repo defines a `mage check` gate (fmt-check, build,
+      # vet, lint, test, coverage), mirroring the Deno repos' `deno task`
+      # convention. `mage lint` runs golangci-lint, so no separate lint step is
+      # needed. Repos without magefiles fall back to the standard go toolchain.
+      - name: Go Check
+        run: |
+          if [ -d magefiles ] || ls magefile*.go >/dev/null 2>&1; then
+            go run github.com/magefile/mage check
+          else
+            unformatted=$(gofmt -l .)
+            if [ -n "$unformatted" ]; then
+              echo "::error::gofmt found unformatted files:"
+              echo "$unformatted"
+              exit 1
+            fi
+            go vet ./...
+            go test ./...
+          fi
+
+      - name: NPM Cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: npm-semantic-release-${{ runner.os }}
+
+      # semantic-release is the only npm consumer. Write the .npmrc at runtime so
+      # the Go repo never commits one. The quoted heredoc keeps ${NPM_TOKEN}
+      # literal — npm expands it from the env at install time.
+      - name: NPM Authn
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cat > "$HOME/.npmrc" <<'EOF'
+          //npm.pkg.github.com/:_authToken=${NPM_TOKEN}
+          @dmikalova:registry=https://npm.pkg.github.com
+          EOF
+
+      - name: Semantic Release
+        id: release
+        if: github.ref == 'refs/heads/main'
+        uses: cycjimmy/semantic-release-action@v5
+        with:
+          extends: "@dmikalova/semantic-release-config"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+
+      - name: Release Info
+        id: info
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "name=$(jq -r .name mklv.config.json)" >> $GITHUB_OUTPUT
+          if [ "${{ steps.release.outputs.new_release_published }}" == "true" ]; then
+            echo "version=${{ steps.release.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          else
+            latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            echo "version=${latest#v}" >> $GITHUB_OUTPUT
+          fi
+
+      # Build from the repo's Dockerfile so each app controls its own image.
+      - name: Buildah Build
+        if: github.ref == 'refs/heads/main'
+        run: |
+          buildah build -t ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} .
+
+      - name: GHCR Push
+        if: github.ref == 'refs/heads/main'
+        run: |
+          image=ghcr.io/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+          buildah tag ${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }} $image
+          buildah login -u dmikalova -p ${{ secrets.GITHUB_TOKEN }} ghcr.io
+          buildah push $image
+
+      - name: GCP Authn
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: Cloud Run Deploy
+        if: github.ref == 'refs/heads/main'
+        run: |
+          image=${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT }}/ghcr/dmikalova/${{ steps.info.outputs.name }}:${{ steps.info.outputs.version }}
+          gcloud run deploy ${{ steps.info.outputs.name }} \
+            --image $image \
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ env.GCP_PROJECT }} \
+            --quiet

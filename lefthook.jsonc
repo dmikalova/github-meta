@@ -75,6 +75,34 @@
         ]
       },
 
+      "go-fmt": {
+        "glob": "*.go",
+        "run": "gofmt -w {staged_files}",
+        "skip": [
+          {
+            "run": "! git ls-files 'go.mod' | grep -q ."
+          }
+        ]
+      },
+
+      "go-vet": {
+        "run": "go vet ./...",
+        "skip": [
+          {
+            "run": "! git ls-files 'go.mod' | grep -q ."
+          }
+        ]
+      },
+
+      "go-test": {
+        "run": "go test ./...",
+        "skip": [
+          {
+            "run": "! git ls-files '*_test.go' | grep -q ."
+          }
+        ]
+      },
+
       "markdown-lint": {
         "glob": "**/*.md",
         "run": "qmark {all_files}"
