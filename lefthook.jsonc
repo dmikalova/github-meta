@@ -125,7 +125,10 @@
       },
 
       "no-typos": {
-        "run": "git ls-files | typos --file-list - --write-changes"
+        // Walk the tree (rather than piping an explicit --file-list) so each
+        // repo's typos config excludes and binary detection are honored;
+        // explicit file lists bypass both.
+        "run": "typos --write-changes"
       },
 
       "terraform-fmt": {
