@@ -75,13 +75,25 @@
         ]
       },
 
+      // A repo with magefiles owns its own green gate: `mage check` is a
+      // strict superset of fmt/vet/test (formatting, build, lint, tests,
+      // coverage), so the generic hooks below stand down for those repos.
+      "go-check": {
+        "run": "mage check",
+        "skip": [
+          {
+            "run": "! git ls-files 'magefile.go' 'magefiles/*.go' | grep -q ."
+          }
+        ]
+      },
+
       "go-fmt": {
         "glob": "*.go",
         "run": "gofmt -w {staged_files}",
         "skip": [
           {
             "run": "! git ls-files 'go.mod' | grep -q ."
-          }
+          },
         ]
       },
 
@@ -90,7 +102,7 @@
         "skip": [
           {
             "run": "! git ls-files 'go.mod' | grep -q ."
-          }
+          },
         ]
       },
 
@@ -99,7 +111,7 @@
         "skip": [
           {
             "run": "! git ls-files '*_test.go' | grep -q ."
-          }
+          },
         ]
       },
 
