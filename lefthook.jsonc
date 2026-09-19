@@ -19,9 +19,9 @@
   "commit-msg": {
     "commands": {
       "commitlint": {
-        "run": "commitlint --edit"
-      }
-    }
+        "run": "commitlint --edit",
+      },
+    },
   },
 
   "pre-commit": {
@@ -34,45 +34,45 @@
         "run": "deno run check",
         "skip": [
           {
-            "run": "! git ls-files 'deno.json*' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files 'deno.json*' | grep -q .",
+          },
+        ],
       },
 
       "deno-fmt": {
         "run": "deno run fmt",
         "skip": [
           {
-            "run": "! git ls-files 'deno.json*' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files 'deno.json*' | grep -q .",
+          },
+        ],
       },
 
       "deno-lint": {
         "run": "deno run lint --fix",
         "skip": [
           {
-            "run": "! git ls-files 'deno.json*' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files 'deno.json*' | grep -q .",
+          },
+        ],
       },
 
       "deno-test": {
         "run": "deno run test",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files '*_test.ts' '*.test.ts' '*_test.js' '*.test.js' | grep -q .",
+          },
+        ],
       },
 
       "deno-coverage": {
         "run": "NO_COLOR=1 deno task test:all --coverage 2>&1 | tee /dev/stderr | grep '| All files' | grep -q '100.0.*100.0.*100.0'",
         "skip": [
           {
-            "run": "! git ls-files '*_test.ts' '*.test.ts' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files '*_test.ts' '*.test.ts' | grep -q .",
+          },
+        ],
       },
 
       // A repo with magefiles owns its own green gate: `mage check` is a
@@ -82,9 +82,9 @@
         "run": "mage check",
         "skip": [
           {
-            "run": "! git ls-files 'magefile.go' 'magefiles/*.go' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files 'magefile.go' 'magefiles/*.go' | grep -q .",
+          },
+        ],
       },
 
       "go-fmt": {
@@ -92,55 +92,55 @@
         "run": "gofmt -w {staged_files}",
         "skip": [
           {
-            "run": "! git ls-files 'go.mod' | grep -q ."
+            "run": "! git ls-files 'go.mod' | grep -q .",
           },
-        ]
+        ],
       },
 
       "go-vet": {
         "run": "go vet ./...",
         "skip": [
           {
-            "run": "! git ls-files 'go.mod' | grep -q ."
+            "run": "! git ls-files 'go.mod' | grep -q .",
           },
-        ]
+        ],
       },
 
       "go-test": {
         "run": "go test ./...",
         "skip": [
           {
-            "run": "! git ls-files '*_test.go' | grep -q ."
+            "run": "! git ls-files '*_test.go' | grep -q .",
           },
-        ]
+        ],
       },
 
       "markdown-lint": {
         "glob": "**/*.md",
-        "run": "qmark {all_files}"
+        "run": "goldmark-lint {all_files}",
       },
 
       "no-gitleaks": {
-        "run": "gitleaks detect . --log-level warn --no-banner --verbose"
+        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
       },
 
       "no-large-files": {
-        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0"
+        "run": "files=$(git ls-files | xargs -I{} find {} -size +5M 2>/dev/null); [ -n \"$files\" ] && echo \"Error: Files exceed 5MB:\" && echo \"$files\" && exit 1 || exit 0",
       },
 
       "no-merge-conflicts": {
-        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0"
+        "run": "git grep -E '^(<<<<<<<|=======|>>>>>>>)' && exit 1 || exit 0",
       },
 
       "no-shell-scripts": {
-        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi"
+        "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
       },
 
       "no-typos": {
         // Walk the tree (rather than piping an explicit --file-list) so each
         // repo's typos config excludes and binary detection are honored;
         // explicit file lists bypass both.
-        "run": "typos --write-changes"
+        "run": "typos --write-changes",
       },
 
       "terraform-fmt": {
@@ -148,9 +148,9 @@
         "run": "tofu fmt",
         "skip": [
           {
-            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q ."
-          }
-        ]
+            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q .",
+          },
+        ],
       },
 
       "terraform-validate": {
@@ -158,10 +158,10 @@
         "run": "terramate run -- tofu validate",
         "skip": [
           {
-            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q ."
-          }
-        ]
-      }
-    }
-  }
+            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q .",
+          },
+        ],
+      },
+    },
+  },
 }

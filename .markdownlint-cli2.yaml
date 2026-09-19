@@ -1,0 +1,9 @@
+# goldmark-lint configuration
+# https://github.com/mrueg/goldmark-lint
+config:
+  MD013: false # line-length: let editors handle wrapping
+  MD031: false # blanks-around-fences: allow fenced code blocks without blank lines
+  MD032: false # blanks-around-lists: too strict for loose lists with spacing
+  MD033: false # no-inline-html: allow inline HTML (common in GitHub READMEs, badges)
+  MD040: false # fenced-code-language: don't require language specifier
+  MD049: false # emphasis-style: allow both * and _
