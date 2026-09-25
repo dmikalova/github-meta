@@ -6,8 +6,10 @@
 # the GitHub API, which signs the commit, straight to the default branch. A
 # summary of the run goes to Discord #maintenance.
 #
-# The token is a fine-grained PAT (Contents and Workflows read/write) in Secret
-# Manager as github-conform-token, read through WIF as the deploy SA.
+# All GitHub changes go through the gh CLI, authenticated with the
+# infrastructure GitHub token (Secret Manager github-token). Only this
+# repository's own federated identity can read it; the Discord summary uses the
+# deploy SA.
 
 name: Conformance
 
@@ -44,10 +46,11 @@ jobs:
     outputs:
       repos: ${{ steps.list.outputs.repos }}
     steps:
+      # Direct WIF as this repository: github-token is readable only by
+      # project-standards' own identity, never through a shared service account.
       - name: GCP Authn
         uses: google-github-actions/auth@v3
         with:
-          service_account: ${{ env.WIF_DEPLOY_SA }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
       - name: List Opted-in Repos
@@ -55,7 +58,7 @@ jobs:
         env:
           ONLY: ${{ inputs.repos }}
         run: |
-          GH_TOKEN=$(gcloud secrets versions access latest --secret=github-conform-token --project="$GCP_PROJECT")
+          GH_TOKEN=$(gcloud secrets versions access latest --secret=github-token --project="$GCP_PROJECT")
           echo "::add-mask::$GH_TOKEN"
           export GH_TOKEN
 
@@ -81,13 +84,12 @@ jobs:
       - name: GCP Authn
         uses: google-github-actions/auth@v3
         with:
-          service_account: ${{ env.WIF_DEPLOY_SA }}
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
       - name: Token
         id: token
         run: |
-          token=$(gcloud secrets versions access latest --secret=github-conform-token --project="$GCP_PROJECT")
+          token=$(gcloud secrets versions access latest --secret=github-token --project="$GCP_PROJECT")
           echo "::add-mask::$token"
           echo "token=$token" >> "$GITHUB_OUTPUT"
 

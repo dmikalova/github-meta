@@ -3,9 +3,9 @@
 # Detects the project's languages from its files and its kind from
 # mklv.config.json, then:
 #   check   each language's own check, plus the shared checks
-#   release svu picks the next version from Conventional Commits; cli projects
-#           release binaries with goreleaser, everything else gets a GitHub
-#           release with generated notes
+#   release svu picks the next version from Conventional Commits and gh
+#           creates a GitHub release with generated notes; cli projects attach
+#           binaries built by goreleaser
 #   deploy  cloudrun: image build, Atlas schema apply, Cloud Run deploy
 #           infra:    terramate apply
 #   notify  posts every main-branch result, pass or fail, to Discord #deploys
@@ -135,16 +135,17 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes
 
-      # goreleaser reads the version from a local tag. It creates the GitHub
-      # release, and GitHub creates the tag on this commit.
+      # goreleaser reads the version from a local tag and only builds the
+      # archives. gh publishes them, and GitHub creates the tag on this commit.
       - name: goreleaser Release
         if: steps.version.outputs.released == 'true' && needs.detect.outputs.kind == 'cli'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           git tag "$VERSION"
           go run "$GORELEASER" release --clean
+          gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes dist/*.tar.gz dist/*_checksums.txt
 
   deploy-cloudrun:
     name: Deploy (Cloud Run)
