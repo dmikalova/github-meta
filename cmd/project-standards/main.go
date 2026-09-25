@@ -8,6 +8,7 @@
 //
 //	project-standards <command>
 //	project-standards conform [-json]
+//	project-standards changelog [-from ref] [-to ref]
 //
 // The commands are:
 //
@@ -19,6 +20,7 @@
 //	commits   lint commit messages not yet on the default branch
 //	drift     check the generated configs are up to date
 //	conform   write every standard file that drifted, and report what needs a human
+//	changelog print release notes for the commits in from..to
 //	version   print the version
 //
 // It runs in the project root. The tools run with `go run pkg@version`, pinned
@@ -30,18 +32,25 @@
 // conform exits 0 whether or not it changed anything: findings are reports, not
 // failures. It exits 1 only when conform itself fails. With -json it prints
 // {"changed": [paths], "findings": [{"rule", "path", "message"}]}.
+//
+// changelog prints Markdown release notes for the commits in from..to (from
+// every commit when from is empty), grouped by Conventional Commit type. The
+// cicd workflow uses it for GitHub releases and the Discord post.
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/dmikalova/project-standards/ci"
+	"github.com/dmikalova/project-standards/internal/changelog"
 	"github.com/dmikalova/project-standards/internal/checks"
 	"github.com/dmikalova/project-standards/internal/conform"
 )
@@ -58,8 +67,29 @@ func main() {
 	conformHere := func() (*conform.Report, error) {
 		return conform.Run(conform.Options{Dir: ".", Govulncheck: ci.Govulncheck})
 	}
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c, conformHere))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c, conformHere, notesHere))
 }
+
+// notesHere renders the release notes for from..to in the current directory,
+// linking commits when origin is a GitHub remote.
+func notesHere(from, to string) (string, error) {
+	git := func(args ...string) (string, error) {
+		out, err := exec.Command("git", args...).Output()
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+			err = fmt.Errorf("%w: %s", err, string(bytes.TrimSpace(exitErr.Stderr)))
+		}
+		return string(out), err
+	}
+	commits, err := changelog.Commits(git, from, to)
+	if err != nil {
+		return "", err
+	}
+	remote, _ := git("remote", "get-url", "origin") // no remote leaves SHAs unlinked
+	return changelog.Render(commits, changelog.CommitURL(remote)), nil
+}
+
+// A changeloger renders the release notes for the commits in from..to.
+type changeloger func(from, to string) (string, error)
 
 // A conformer conforms the project in the current directory.
 type conformer func() (*conform.Report, error)
@@ -92,6 +122,7 @@ var checkCommands = []command{
 
 const usage = `Usage: project-standards <command>
        project-standards conform [-json]
+       project-standards changelog [-from ref] [-to ref]
 
 Runs the shared, language-independent checks in the current directory, which
 must be the project root.
@@ -106,12 +137,20 @@ Commands:
   drift     check the generated configs are up to date
   conform   write every standard file that drifted, and report what needs a
             human; -json prints the report as JSON
+  changelog print Markdown release notes for the commits in from..to, grouped
+            by Conventional Commit type; an empty -from starts at the root
   version   print the version
 `
 
 // run runs the command args name and returns the exit status: 0 on success, 1
 // when a check fails and 2 for a usage error.
-func run(args []string, stdout, stderr io.Writer, c checker, conformHere conformer) int {
+func run(
+	args []string,
+	stdout, stderr io.Writer,
+	c checker,
+	conformHere conformer,
+	notes changeloger,
+) int {
 	fs := flag.NewFlagSet("project-standards", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { _, _ = io.WriteString(stderr, usage) }
@@ -121,7 +160,7 @@ func run(args []string, stdout, stderr io.Writer, c checker, conformHere conform
 		}
 		return 2
 	}
-	if fs.NArg() == 0 || fs.NArg() > 1 && fs.Arg(0) != "conform" {
+	if fs.NArg() == 0 || fs.NArg() > 1 && fs.Arg(0) != "conform" && fs.Arg(0) != "changelog" {
 		fs.Usage()
 		return 2
 	}
@@ -129,6 +168,8 @@ func run(args []string, stdout, stderr io.Writer, c checker, conformHere conform
 	switch name := fs.Arg(0); name {
 	case "conform":
 		return runConform(fs.Args()[1:], stdout, stderr, conformHere)
+	case "changelog":
+		return runChangelog(fs.Args()[1:], stdout, stderr, notes)
 	case "check":
 		err = check(stdout, c)
 	case "fix":
@@ -223,6 +264,31 @@ func runConform(args []string, stdout, stderr io.Writer, conformHere conformer) 
 		return 0
 	}
 	printReport(stdout, report)
+	return 0
+}
+
+// runChangelog prints the release notes for -from..-to.
+func runChangelog(args []string, stdout, stderr io.Writer, notes changeloger) int {
+	fs := flag.NewFlagSet("project-standards changelog", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	fs.Usage = func() { _, _ = io.WriteString(stderr, usage) }
+	from := fs.String("from", "", "the previous release; empty starts at the root commit")
+	to := fs.String("to", "HEAD", "the release")
+	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		if err == nil {
+			fs.Usage()
+		}
+		return 2
+	}
+	out, err := notes(*from, *to)
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "project-standards changelog:", err)
+		return 1
+	}
+	_, _ = io.WriteString(stdout, out)
 	return 0
 }
 

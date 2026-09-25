@@ -12,13 +12,13 @@ There was one reusable workflow per kind of project: `go-cloudrun.yaml`, `deno-c
 
 1. **Setup:** installs the detected toolchains and authenticates to GCP through WIF.
 2. **Check:** runs each language's own check (`mage ci:check`, `deno task check`, `tofu` and terramate validation), plus the shared checks through the project-standards binary.
-3. **Release**, on main: svu computes the next version from Conventional Commits and tags it.
+3. **Release**, on main: svu computes the next version from Conventional Commits and tags it, and `project-standards changelog` writes the notes: the commit titles since the previous release, grouped by type as semantic-release did.
 4. **Deploy**, on main, depending on `kind`:
    - **cli**: goreleaser publishes binaries
    - **cloudrun**: builds the image and deploys to Cloud Run
    - **infra**: terramate apply
    - **library**: tag only
-5. **Notify:** every deploy, whether it passed or failed, is posted to the Discord `#deploys` channel through a webhook. The webhook URL is stored with SOPS in infrastructure, synced to Secret Manager, and read through WIF.
+5. **Notify:** every deploy, whether it passed or failed, is posted to the Discord `#deploys` channel through a webhook, with the release notes. The webhook URL is stored with SOPS in infrastructure, synced to Secret Manager, and read through WIF.
 
 **Scheduled runs are health checks.** The standard caller also runs weekly. A scheduled run checks the project, catching breakage from tool and dependency updates, and re-applies `infra` projects to correct drift. It releases and deploys nothing else, and notifies only on failure.
 

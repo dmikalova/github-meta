@@ -3,9 +3,9 @@
 # Detects the project's languages from its files and its kind from
 # mklv.config.json, then:
 #   check   each language's own check, plus the shared checks
-#   release svu picks the next version from Conventional Commits and gh
-#           creates a GitHub release with generated notes; cli projects attach
-#           binaries built by goreleaser
+#   release svu picks the next version from Conventional Commits and
+#           `project-standards changelog` writes the notes; cli projects release
+#           binaries with goreleaser, everything else gets a gh release
 #   deploy  cloudrun: image build, Atlas schema apply, Cloud Run deploy
 #           infra:    terramate apply
 #   notify  posts every main-branch result, pass or fail, to Discord #deploys
@@ -37,6 +37,7 @@ env:
   WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
   WIF_INFRA_SA: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
   SVU: github.com/caarlos0/svu/v3@v3.4.1
+  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
   GORELEASER: github.com/goreleaser/goreleaser/v2@v2.18.2
 
 concurrency:
@@ -96,6 +97,7 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.version.outputs.version }}
+      notes: ${{ steps.notes.outputs.notes }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -117,6 +119,10 @@ jobs:
         id: version
         run: |
           current=$(go run "$SVU" current --tag.mode current)
+          # The previous release, or none when this is the first.
+          if git rev-parse -q --verify "refs/tags/$current" >/dev/null; then
+            echo "previous=$current" >> "$GITHUB_OUTPUT"
+          fi
           if git tag --points-at HEAD | grep -qx "$current"; then
             echo "HEAD is already released as $current"
             echo "released=false" >> "$GITHUB_OUTPUT"
@@ -128,24 +134,39 @@ jobs:
             echo "version=$next" >> "$GITHUB_OUTPUT"
           fi
 
+      # The commit titles since the previous release, grouped by type the way
+      # semantic-release did. Also posted to Discord.
+      - name: Notes
+        id: notes
+        if: steps.version.outputs.released == 'true'
+        env:
+          PREVIOUS: ${{ steps.version.outputs.previous }}
+        run: |
+          go run "$PROJECT_STANDARDS" changelog -from "$PREVIOUS" > /tmp/notes.md
+          cat /tmp/notes.md
+          {
+            echo "notes<<NOTES_EOF"
+            cat /tmp/notes.md
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: GitHub Release
         if: steps.version.outputs.released == 'true' && needs.detect.outputs.kind != 'cli'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
-        run: gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes
+        run: gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file /tmp/notes.md
 
-      # goreleaser reads the version from a local tag and only builds the
-      # archives. gh publishes them, and GitHub creates the tag on this commit.
+      # goreleaser reads the version from a local tag and publishes the release
+      # with the notes; GitHub creates the tag on this commit.
       - name: goreleaser Release
         if: steps.version.outputs.released == 'true' && needs.detect.outputs.kind == 'cli'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           git tag "$VERSION"
-          go run "$GORELEASER" release --clean
-          gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes dist/*.tar.gz dist/*_checksums.txt
+          go run "$GORELEASER" release --clean --release-notes /tmp/notes.md
 
   deploy-cloudrun:
     name: Deploy (Cloud Run)
@@ -371,6 +392,7 @@ jobs:
           NAME: ${{ needs.detect.outputs.name }}
           KIND: ${{ needs.detect.outputs.kind }}
           VERSION: ${{ needs.release.outputs.version }}
+          NOTES: ${{ needs.release.outputs.notes }}
           MESSAGE: ${{ github.event.head_commit.message }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -381,16 +403,23 @@ jobs:
           subject=${subject:-${GITHUB_SHA::7}}
           if [ "$FAILED" = true ]; then
             title="❌ ${NAME} failed"
+            description=$subject
             color=15158332
           else
             title="✅ ${NAME} ${VERSION} (${KIND})"
+            # The release notes, or the commit when nothing new was released.
+            description=${NOTES:-$subject}
             color=3066993
+          fi
+          # Discord caps an embed description at 4096 characters.
+          if [ ${#description} -gt 4000 ]; then
+            description="${description:0:4000}…"
           fi
 
           jq -n \
             --arg title "$title" \
             --arg url "$RUN_URL" \
-            --arg description "$subject" \
+            --arg description "$description" \
             --argjson color "$color" \
             '{embeds: [{title: $title, url: $url, description: $description, color: $color}]}' |
             curl -fsS -H 'Content-Type: application/json' -d @- "$webhook"

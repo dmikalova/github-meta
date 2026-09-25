@@ -107,7 +107,11 @@ func TestRun(t *testing.T) {
 				t.Error("conform ran")
 				return nil, nil
 			}
-			if got := run(tt.args, &stdout, &stderr, c, noConform); got != tt.status {
+			noNotes := func(string, string) (string, error) {
+				t.Error("changelog ran")
+				return "", nil
+			}
+			if got := run(tt.args, &stdout, &stderr, c, noConform, noNotes); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
 			}
 			if !reflect.DeepEqual(c.ran, tt.ran) {
@@ -208,6 +212,7 @@ func TestConform(t *testing.T) {
 				&stderr,
 				&fakeChecker{},
 				conformHere,
+				func(string, string) (string, error) { return "", nil },
 			); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
 			}
@@ -216,6 +221,88 @@ func TestConform(t *testing.T) {
 			}
 			if tt.stderr != "" && stderr.String() != tt.stderr {
 				t.Errorf("stderr = %q, want %q", stderr.String(), tt.stderr)
+			}
+		})
+	}
+}
+
+func TestChangelog(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		notes    string
+		err      error
+		status   int
+		stdout   string
+		stderr   string
+		wantFrom string
+		wantTo   string
+	}{
+		{
+			name:     "defaults",
+			args:     []string{"changelog"},
+			notes:    "### Features\n",
+			stdout:   "### Features\n",
+			wantFrom: "",
+			wantTo:   "HEAD",
+		},
+		{
+			name:     "range",
+			args:     []string{"changelog", "-from", "v1.2.3", "-to", "abc"},
+			notes:    "No changes.\n",
+			stdout:   "No changes.\n",
+			wantFrom: "v1.2.3",
+			wantTo:   "abc",
+		},
+		{
+			name:     "failure",
+			args:     []string{"changelog", "-from", "nope"},
+			err:      errors.New("bad revision"),
+			status:   1,
+			stderr:   "project-standards changelog: bad revision\n",
+			wantFrom: "nope",
+			wantTo:   "HEAD",
+		},
+		{name: "-h", args: []string{"changelog", "-h"}, stderr: usage},
+		{name: "unknown flag", args: []string{"changelog", "-x"}, status: 2},
+		{name: "extra argument", args: []string{"changelog", "x"}, status: 2, stderr: usage},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			var gotFrom, gotTo string
+			notes := func(from, to string) (string, error) {
+				gotFrom, gotTo = from, to
+				return tt.notes, tt.err
+			}
+			noConform := func() (*conform.Report, error) {
+				t.Error("conform ran")
+				return nil, nil
+			}
+			if got := run(
+				tt.args,
+				&stdout,
+				&stderr,
+				&fakeChecker{},
+				noConform,
+				notes,
+			); got != tt.status {
+				t.Errorf("status = %d, want %d", got, tt.status)
+			}
+			if stdout.String() != tt.stdout {
+				t.Errorf("stdout = %q, want %q", stdout.String(), tt.stdout)
+			}
+			if tt.stderr != "" && stderr.String() != tt.stderr {
+				t.Errorf("stderr = %q, want %q", stderr.String(), tt.stderr)
+			}
+			if gotFrom != tt.wantFrom || gotTo != tt.wantTo {
+				t.Errorf(
+					"notes(%q, %q), want notes(%q, %q)",
+					gotFrom,
+					gotTo,
+					tt.wantFrom,
+					tt.wantTo,
+				)
 			}
 		})
 	}

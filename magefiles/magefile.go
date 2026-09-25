@@ -11,6 +11,7 @@ import (
 
 func init() {
 	ci.CoverGates = []ci.CoverGate{
+		{Name: "changelog", Test: "./internal/changelog/", Count: "./internal/changelog/"},
 		{Name: "checks", Test: "./internal/checks/", Count: "./internal/checks/"},
 		{Name: "conform", Test: "./internal/conform/", Count: "./internal/conform/"},
 		{Name: "config", Test: "./internal/config/", Count: "./internal/config/"},

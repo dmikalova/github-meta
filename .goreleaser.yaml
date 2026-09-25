@@ -3,9 +3,8 @@
 # Releases the project-standards binary (ADR 0002) with goreleaser v2, the free
 # edition. The cicd workflow tags the release with svu first, then runs
 # `goreleaser release --clean`, so goreleaser takes the version from that tag
-# and computes none of its own. goreleaser only builds the archives: the
-# workflow publishes them with `gh release create`, so every GitHub change in
-# CI goes through the gh CLI.
+# and computes none of its own. The notes come from `project-standards
+# changelog` (--release-notes), so every release reads the same.
 version: 2
 
 project_name: project-standards
@@ -44,7 +43,4 @@ checksum:
   algorithm: sha256
 
 changelog:
-  disable: true
-
-release:
   disable: true
