@@ -1,0 +1,4 @@
+# Base gitleaks config: gitleaks' own default rules. Projects add allowlists
+# under tools.gitleaks.
+[extend]
+useDefault = true

@@ -1,0 +1,12 @@
+# Base goldmark-lint config, in markdownlint-cli2's format. Every markdownlint
+# rule not listed here stays at its default.
+config:
+  MD013: false # line-length: let editors handle wrapping
+  MD031: false # blanks-around-fences: allow fences without surrounding blanks
+  MD032: false # blanks-around-lists: too strict for loose lists with spacing
+  MD033: false # no-inline-html: allow inline HTML (badges, GitHub READMEs)
+  MD040: false # fenced-code-language: don't require a language on fences
+  MD049: false # emphasis-style: allow both * and _
+
+# Walk to the git root and skip everything .gitignore excludes.
+gitignore: true

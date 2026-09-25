@@ -1,0 +1,11 @@
+# Base misspell settings. misspell has no config file, so ci:spell maps these to
+# flags and to the list of files it checks.
+#
+# ignore: corrections to skip, passed as -i.
+# locale: US or UK to also correct the other locale's spellings, passed as
+#   -locale. Empty means misspell's neutral default.
+# exclude: path globs (** matches any number of directories) never checked.
+ignore: []
+locale: ""
+exclude:
+  - "**/go.sum"

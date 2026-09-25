@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/dmikalova/project-standards/main/schema/mklv.config.schema.json",
+  "title": "mklv.config.json",
+  "description": "A project's only hand-edited configuration (ADR 0005). Every field is optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "description": "The schema editors validate this file against.",
+      "type": "string"
+    },
+    "name": {
+      "description": "App identifier: the container image tag and the Cloud Run service name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "entrypoint": {
+      "description": "The file the app is built from, e.g. src/main.ts or cmd/web/main.go.",
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime": {
+      "description": "Runtime settings of the deployed service.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "description": "Port the app listens on. The Deno pipeline defaults it to 8000.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "healthCheckPath": {
+          "description": "Health check endpoint path. Defaults to /health.",
+          "type": "string",
+          "pattern": "^/"
+        }
+      }
+    },
+    "kind": {
+      "description": "What the project produces and how it ships (ADR 0006).",
+      "enum": ["cli", "cloudrun", "library", "infra"]
+    },
+    "tools": {
+      "description": "Overrides merged onto each tool's base config. Objects merge deeply, lists are appended, {\"replace\": [...]} replaces a list, and null removes a key.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "golangci": {
+          "description": "Merged onto the base .golangci.yaml, in golangci-lint v2's config schema.",
+          "$ref": "#/$defs/override"
+        },
+        "markdownlint": {
+          "description": "Merged onto the base .markdownlint-cli2.yaml, which goldmark-lint reads, in markdownlint-cli2's config schema.",
+          "$ref": "#/$defs/override"
+        },
+        "gitleaks": {
+          "description": "Merged onto the base .gitleaks.toml, in gitleaks' config schema written as JSON.",
+          "$ref": "#/$defs/override"
+        },
+        "commitlint": {
+          "description": "Merged onto the base .commitlint.yaml, in conventionalcommit/commitlint's config schema.",
+          "$ref": "#/$defs/override"
+        },
+        "misspell": {
+          "description": "misspell settings, passed as flags because misspell has no config file.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ignore": {
+              "description": "Corrections to skip, passed as -i.",
+              "$ref": "#/$defs/stringList"
+            },
+            "locale": {
+              "description": "US or UK also corrects the other locale's spellings. Empty is misspell's neutral default.",
+              "enum": ["", "US", "UK", "us", "uk", null]
+            },
+            "exclude": {
+              "description": "Path globs never checked; ** matches any number of directories.",
+              "$ref": "#/$defs/stringList"
+            }
+          }
+        }
+      }
+    },
+    "ignore": {
+      "description": "Additions to the universal ignore files (ADR 0007).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "git": {
+          "description": "Lines added to .gitignore.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "docker": {
+          "description": "Lines added to .dockerignore.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "override": {
+      "description": "A tool config override. The tool's own schema applies to its contents.",
+      "type": "object"
+    },
+    "stringList": {
+      "oneOf": [
+        {
+          "description": "Appended to the base list.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        {
+          "description": "Replaces the base list.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["replace"],
+          "properties": {
+            "replace": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        {
+          "description": "Removes the base list.",
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

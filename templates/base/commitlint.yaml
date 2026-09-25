@@ -1,0 +1,55 @@
+# Base config for github.com/conventionalcommit/commitlint. Conventional commit
+# types, with the header and body held to 100 columns. The file replaces
+# commitlint's defaults rather than extending them, so every enabled rule and
+# its argument is listed. commitlint requires a settings entry for every enabled
+# rule, so rules without an argument get an empty one.
+min-version: v0.12.0
+formatter: default
+rules:
+  - body-leading-blank
+  - body-max-line-length
+  - description-empty
+  - description-full-stop
+  - footer-leading-blank
+  - footer-max-line-length
+  - header-max-length
+  - header-trim
+  - type-case
+  - type-empty
+  - type-enum
+severity:
+  default: error
+  rules:
+    body-leading-blank: warn
+    footer-leading-blank: warn
+settings:
+  body-leading-blank: {}
+  body-max-line-length:
+    argument: 100
+  description-empty: {}
+  description-full-stop:
+    argument: "."
+  footer-leading-blank: {}
+  footer-max-line-length:
+    argument: 100
+  header-max-length:
+    argument: 100
+  header-trim: {}
+  type-case:
+    argument: lower-case
+  type-empty: {}
+  type-enum:
+    argument:
+      - build
+      - chore
+      - ci
+      - docs
+      - feat
+      - fix
+      - perf
+      - refactor
+      - revert
+      - style
+      - test
+disable-default-ignores: false
+ignores: []

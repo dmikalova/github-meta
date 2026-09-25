@@ -1,0 +1,47 @@
+{
+  "name": "example",
+  "kind": "cli",
+  "tools": {
+    "golangci": {
+      "linters": {
+        "enable": ["gosec"],
+        "settings": {
+          "gocognit": { "min-complexity": 40 },
+          "gocritic": null
+        },
+        "exclusions": {
+          "rules": [
+            { "linters": ["unused"], "text": "const \\w+Unset is unused" }
+          ]
+        }
+      },
+      "run": { "build-tags": { "replace": ["mage", "integration"] } }
+    },
+    "markdownlint": {
+      "config": {
+        "MD013": { "line_length": 120 },
+        "MD049": null,
+        "MD024": { "siblings_only": true }
+      },
+      "ignores": ["docs/todo.md"]
+    },
+    "commitlint": {
+      "rules": ["scope-enum"],
+      "settings": {
+        "header-max-length": { "argument": 72 },
+        "scope-enum": { "argument": ["api", "web"], "flags": { "allow-empty": true } }
+      }
+    },
+    "gitleaks": {
+      "allowlists": [
+        { "description": "test fixtures", "paths": ["^testdata/"] }
+      ],
+      "extend": { "disabledRules": ["generic-api-key"] }
+    },
+    "misspell": {
+      "ignore": ["cancelled"],
+      "locale": "us",
+      "exclude": { "replace": ["docs/**"] }
+    }
+  }
+}

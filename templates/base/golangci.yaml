@@ -1,0 +1,49 @@
+# Base golangci-lint config. Only generic settings belong here: an exclusion
+# that exists because of one project's code goes in that project's
+# mklv.config.json under tools.golangci.
+version: "2"
+
+run:
+  # Lint the magefiles too. They only build with the mage tag.
+  build-tags:
+    - mage
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - dupl
+    - gocognit
+    - gocritic
+    - revive
+    - unconvert
+  # misspell is deliberately absent: the ci:spell target runs the misspell CLI
+  # over Go comments and every text file with one ignore list, so enabling the
+  # linter too would check Go comments twice against a second list.
+
+  settings:
+    # gocognit measures cognitive, not cyclomatic, complexity: flat dispatch
+    # switches stay cheap while nested logic is flagged. Treat it as a smoke
+    # detector: split a function when a reader gains from it.
+    gocognit:
+      min-complexity: 30
+    gocritic:
+      enabled-checks:
+        - ruleguard
+      settings:
+        ruleguard:
+          # ci:fix writes this file from templates/ruleguard/rules.go.
+          rules: "${base-path}/.ruleguard.go"
+
+  exclusions:
+    rules:
+      # Table-driven tests accrue cognitive complexity from their case lists,
+      # not tangled logic.
+      - linters:
+          - gocognit
+        path: _test\.go
+      # Near-identical case blocks are the table-driven test idiom, not
+      # copy-paste to refactor.
+      - linters:
+          - dupl
+        path: _test\.go
