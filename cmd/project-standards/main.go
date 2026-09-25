@@ -1,11 +1,13 @@
 // Command project-standards runs the shared, language-independent checks in
 // projects that do not use Go as their task runner (ADR 0002): Markdown,
 // spelling, secrets, commit messages and drift of the generated configs. Go
-// projects get the same checks from the ci package's mage targets.
+// projects get the same checks from the ci package's mage targets. It also
+// runs conformance (ADR 0007) in any project.
 //
 // Usage:
 //
 //	project-standards <command>
+//	project-standards conform [-json]
 //
 // The commands are:
 //
@@ -16,6 +18,7 @@
 //	secrets   scan history, staged and unstaged changes for secrets
 //	commits   lint commit messages not yet on the default branch
 //	drift     check the generated configs are up to date
+//	conform   write every standard file that drifted, and report what needs a human
 //	version   print the version
 //
 // It runs in the project root. The tools run with `go run pkg@version`, pinned
@@ -23,9 +26,14 @@
 // go.mod. Without one, the Go-only generated configs are neither written nor
 // checked, and spelling only checks text files. CI_COMMIT_RANGE, as
 // "<from>..<to>", makes commits lint exactly that range.
+//
+// conform exits 0 whether or not it changed anything: findings are reports, not
+// failures. It exits 1 only when conform itself fails. With -json it prints
+// {"changed": [paths], "findings": [{"rule", "path", "message"}]}.
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,6 +43,7 @@ import (
 
 	"github.com/dmikalova/project-standards/ci"
 	"github.com/dmikalova/project-standards/internal/checks"
+	"github.com/dmikalova/project-standards/internal/conform"
 )
 
 // version is the release version, set by goreleaser with -ldflags.
@@ -46,8 +55,14 @@ func main() {
 		Label:      "project-standards ",
 		FixCommand: "project-standards fix",
 	}
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c))
+	conformHere := func() (*conform.Report, error) {
+		return conform.Run(conform.Options{Dir: ".", Govulncheck: ci.Govulncheck})
+	}
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c, conformHere))
 }
+
+// A conformer conforms the project in the current directory.
+type conformer func() (*conform.Report, error)
 
 // A checker is the shared checks the commands run.
 type checker interface {
@@ -76,6 +91,7 @@ var checkCommands = []command{
 }
 
 const usage = `Usage: project-standards <command>
+       project-standards conform [-json]
 
 Runs the shared, language-independent checks in the current directory, which
 must be the project root.
@@ -88,12 +104,14 @@ Commands:
   secrets   scan history, staged and unstaged changes with gitleaks
   commits   lint commit messages not yet on the default branch
   drift     check the generated configs are up to date
+  conform   write every standard file that drifted, and report what needs a
+            human; -json prints the report as JSON
   version   print the version
 `
 
 // run runs the command args name and returns the exit status: 0 on success, 1
 // when a check fails and 2 for a usage error.
-func run(args []string, stdout, stderr io.Writer, c checker) int {
+func run(args []string, stdout, stderr io.Writer, c checker, conformHere conformer) int {
 	fs := flag.NewFlagSet("project-standards", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { _, _ = io.WriteString(stderr, usage) }
@@ -103,12 +121,14 @@ func run(args []string, stdout, stderr io.Writer, c checker) int {
 		}
 		return 2
 	}
-	if fs.NArg() != 1 {
+	if fs.NArg() == 0 || fs.NArg() > 1 && fs.Arg(0) != "conform" {
 		fs.Usage()
 		return 2
 	}
 	var err error
 	switch name := fs.Arg(0); name {
+	case "conform":
+		return runConform(fs.Args()[1:], stdout, stderr, conformHere)
 	case "check":
 		err = check(stdout, c)
 	case "fix":
@@ -172,4 +192,56 @@ func fix(c checker) error {
 		}
 	}
 	return nil
+}
+
+// runConform runs conform with its flags and prints the report. Findings do not
+// fail it.
+func runConform(args []string, stdout, stderr io.Writer, conformHere conformer) int {
+	fs := flag.NewFlagSet("project-standards conform", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	fs.Usage = func() { _, _ = io.WriteString(stderr, usage) }
+	asJSON := fs.Bool("json", false, "print the report as JSON")
+	if err := fs.Parse(args); err != nil || fs.NArg() > 0 {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		if err == nil {
+			fs.Usage()
+		}
+		return 2
+	}
+	report, err := conformHere()
+	if err != nil {
+		_, _ = fmt.Fprintln(stderr, "project-standards conform:", err)
+		return 1
+	}
+	if *asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		// A Report is strings and slices of strings, which always encode.
+		_ = enc.Encode(report)
+		return 0
+	}
+	printReport(stdout, report)
+	return 0
+}
+
+// printReport prints the files changed, then the findings.
+func printReport(w io.Writer, r *conform.Report) {
+	if len(r.Changed) == 0 {
+		_, _ = fmt.Fprintln(w, "conform: no files changed")
+	} else {
+		_, _ = fmt.Fprintln(w, "conform: changed:")
+		for _, f := range r.Changed {
+			_, _ = fmt.Fprintln(w, "  "+f)
+		}
+	}
+	if len(r.Findings) == 0 {
+		_, _ = fmt.Fprintln(w, "conform: no findings")
+		return
+	}
+	_, _ = fmt.Fprintln(w, "conform: findings that need a human:")
+	for _, f := range r.Findings {
+		_, _ = fmt.Fprintf(w, "  [%s] %s: %s\n", f.Rule, f.Path, f.Message)
+	}
 }

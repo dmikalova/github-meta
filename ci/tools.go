@@ -38,6 +38,10 @@ const (
 	// gci groups imports into standard, third-party and local-module sections,
 	// which gofmt and golines do not do.
 	gci = "github.com/daixiang0/gci@v0.14.0"
+
+	// govulncheck reports dependencies with known vulnerabilities. The
+	// conformance bot bumps each one it reports to the fixed version.
+	govulncheck = "golang.org/x/vuln/cmd/govulncheck@v1.8.0"
 )
 
 // SharedTools pins the tools of the shared, language-independent checks. It is
@@ -52,3 +56,8 @@ var SharedTools = checks.Tools{
 
 // shared runs the shared checks for the targets.
 var shared = &checks.Checks{Tools: SharedTools, Label: "ci:", FixCommand: "mage ci:fix"}
+
+// Govulncheck pins govulncheck for `project-standards conform`, so the binary
+// runs it with the version pinned here. It is not a setting: projects leave it
+// as it is.
+const Govulncheck = govulncheck

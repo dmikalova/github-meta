@@ -16,3 +16,44 @@ var Base embed.FS
 //
 //go:embed ruleguard/rules.go
 var Ruleguard []byte
+
+// The standard files conformance writes into every project (ADR 0007). Their
+// names drop any leading dot so they neither embed as hidden files nor act on
+// this repository.
+var (
+	// License is the Apache-2.0 text GitHub's apache-2.0 license template
+	// writes, with its appendix copyright line as a text/template taking
+	// .Years and .Owner.
+	//
+	//go:embed conform/LICENSE.tmpl
+	License string
+
+	// Lefthook is the lefthook.jsonc every project uses: a remote include of
+	// project-standards' base config at main.
+	//
+	//go:embed conform/lefthook.jsonc
+	Lefthook []byte
+
+	// CICD is the .github/workflows/cicd.yaml caller of the one reusable
+	// workflow (ADR 0006).
+	//
+	//go:embed conform/cicd.yaml
+	CICD []byte
+
+	// Magefile is the magefiles/magefile.go stub a Go project without magefiles
+	// gets: it imports the ci targets and nothing else.
+	//
+	//go:embed conform/magefile.go.tmpl
+	Magefile []byte
+
+	// Gitignore is the universal .gitignore, before a project's additions.
+	//
+	//go:embed conform/gitignore
+	Gitignore []byte
+
+	// Dockerignore is the universal .dockerignore, before a project's
+	// additions.
+	//
+	//go:embed conform/dockerignore
+	Dockerignore []byte
+)

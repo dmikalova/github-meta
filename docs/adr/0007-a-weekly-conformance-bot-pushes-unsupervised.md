@@ -20,7 +20,7 @@ Standards drift unless something enforces them. Enforcement could have been a CL
   - the lefthook config, which must match the template exactly
   - the `cicd.yaml` caller
   - the mage stub, for Go projects
-  - generated tool configs (ADR 0005)
+  - generated tool configs (ADR 0005). A config file at a generated path that doesn't carry the generated header is hand-written. It is reported, not overwritten.
   - one universal `.gitignore` and one universal `.dockerignore`. They're the same for every project, so language changes never cause drift, and one-off additions go in `mklv.config.json`.
   - the project-standards version, bumped to the latest
   - `go mod tidy`

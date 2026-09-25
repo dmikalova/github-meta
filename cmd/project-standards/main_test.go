@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/dmikalova/project-standards/internal/conform"
 )
 
 // fakeChecker records the checks run and fails those named in fail.
@@ -101,7 +103,11 @@ func TestRun(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &fakeChecker{fail: map[string]bool{tt.fail: true}}
 			var stdout, stderr bytes.Buffer
-			if got := run(tt.args, &stdout, &stderr, c); got != tt.status {
+			noConform := func() (*conform.Report, error) {
+				t.Error("conform ran")
+				return nil, nil
+			}
+			if got := run(tt.args, &stdout, &stderr, c, noConform); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
 			}
 			if !reflect.DeepEqual(c.ran, tt.ran) {
@@ -123,5 +129,94 @@ func TestUsageListsEveryCheck(t *testing.T) {
 		if !strings.Contains(usage, "\n  "+cmd.name+" ") {
 			t.Errorf("usage does not list %s", cmd.name)
 		}
+	}
+}
+
+func TestConform(t *testing.T) {
+	report := &conform.Report{
+		Changed: []string{".gitignore", "LICENSE"},
+		Findings: []conform.Finding{
+			{Rule: "readme", Path: "README.md", Message: "missing"},
+		},
+	}
+	empty := &conform.Report{Changed: []string{}, Findings: []conform.Finding{}}
+	tests := []struct {
+		name   string
+		args   []string
+		report *conform.Report
+		err    error
+		status int
+		stdout string
+		stderr string
+	}{
+		{
+			name:   "text report",
+			args:   []string{"conform"},
+			report: report,
+			stdout: "conform: changed:\n  .gitignore\n  LICENSE\n" +
+				"conform: findings that need a human:\n  [readme] README.md: missing\n",
+		},
+		{
+			name:   "nothing to do",
+			args:   []string{"conform"},
+			report: empty,
+			stdout: "conform: no files changed\nconform: no findings\n",
+		},
+		{
+			name:   "json report",
+			args:   []string{"conform", "-json"},
+			report: report,
+			stdout: `{
+  "changed": [
+    ".gitignore",
+    "LICENSE"
+  ],
+  "findings": [
+    {
+      "rule": "readme",
+      "path": "README.md",
+      "message": "missing"
+    }
+  ]
+}
+`,
+		},
+		{
+			name:   "empty json report",
+			args:   []string{"conform", "-json"},
+			report: empty,
+			stdout: "{\n  \"changed\": [],\n  \"findings\": []\n}\n",
+		},
+		{
+			name:   "failure",
+			args:   []string{"conform"},
+			err:    errors.New("git log failed"),
+			status: 1,
+			stderr: "project-standards conform: git log failed\n",
+		},
+		{name: "-h", args: []string{"conform", "-h"}, stderr: usage},
+		{name: "unknown flag", args: []string{"conform", "-x"}, status: 2},
+		{name: "extra argument", args: []string{"conform", "x"}, status: 2, stderr: usage},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			conformHere := func() (*conform.Report, error) { return tt.report, tt.err }
+			if got := run(
+				tt.args,
+				&stdout,
+				&stderr,
+				&fakeChecker{},
+				conformHere,
+			); got != tt.status {
+				t.Errorf("status = %d, want %d", got, tt.status)
+			}
+			if stdout.String() != tt.stdout {
+				t.Errorf("stdout = %q, want %q", stdout.String(), tt.stdout)
+			}
+			if tt.stderr != "" && stderr.String() != tt.stderr {
+				t.Errorf("stderr = %q, want %q", stderr.String(), tt.stderr)
+			}
+		})
 	}
 }
