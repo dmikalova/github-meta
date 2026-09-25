@@ -18,4 +18,4 @@ This repo contains GitHub Actions workflows reused by other repos:
 - Use Workload Identity Federation for GCP auth (no service account keys)
 - Hardcode GCP project/region in workflows (convention over configuration)
 - App repos call workflows with
-  `uses: dmikalova/github-meta/.github/workflows/<name>@main`
+  `uses: dmikalova/project-standards/.github/workflows/<name>@main`

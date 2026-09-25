@@ -10,7 +10,7 @@
 # Usage in app repo:
 #   jobs:
 #     deploy:
-#       uses: dmikalova/github-meta/.github/workflows/go-cloudrun.yaml@main
+#       uses: dmikalova/project-standards/.github/workflows/go-cloudrun.yaml@main
 #       secrets: inherit
 
 name: Go CI/CD

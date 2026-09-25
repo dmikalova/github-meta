@@ -1,4 +1,4 @@
-# github-meta
+# project-standards
 
 Shared configurations and reusable workflows for all repositories.
 
@@ -19,7 +19,7 @@ Create `lefthook.jsonc`:
 {
   "remotes": [
     {
-      "git_url": "https://github.com/dmikalova/github-meta",
+      "git_url": "https://github.com/dmikalova/project-standards",
       "ref": "main",
       "refetch": true,
       "configs": ["lefthook.jsonc"]
@@ -52,7 +52,7 @@ Create `lefthook.jsonc`:
 {
   "remotes": [
     {
-      "git_url": "https://github.com/dmikalova/github-meta",
+      "git_url": "https://github.com/dmikalova/project-standards",
       "ref": "main",
       "refetch": true,
       "configs": ["lefthook.jsonc"]
@@ -87,7 +87,7 @@ Create `lefthook.jsonc` in the repo root:
 {
   "remotes": [
     {
-      "git_url": "https://github.com/dmikalova/github-meta",
+      "git_url": "https://github.com/dmikalova/project-standards",
       "ref": "main",
       "refetch": true,
       "configs": ["lefthook.jsonc"]

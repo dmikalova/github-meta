@@ -10,7 +10,7 @@ with `workflow_call`.
 #### Scenario: Called from app repo
 
 - **WHEN** an app repo workflow uses
-  `dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main`
+  `dmikalova/project-standards/.github/workflows/deno-cloudrun.yaml@main`
 - **THEN** the workflow executes in the context of the calling repo
 
 ### Requirement: Workflow checks out source
@@ -40,13 +40,13 @@ hardcoded provider and service account.
 
 ### Requirement: Workflow runs Dagger pipeline
 
-The workflow SHALL invoke the Dagger pipeline from github-meta.
+The workflow SHALL invoke the Dagger pipeline from project-standards.
 
 #### Scenario: Dagger module called
 
 - **WHEN** the workflow runs
 - **THEN** it calls `dagger call` with the
-  `github.com/dmikalova/github-meta/dagger/deno` module
+  `github.com/dmikalova/project-standards/dagger/deno` module
 
 ### Requirement: Workflow passes secrets to Dagger
 

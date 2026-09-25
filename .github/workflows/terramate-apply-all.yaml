@@ -6,7 +6,7 @@
 # Usage in infrastructure repo:
 #   jobs:
 #     apply:
-#       uses: dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main
+#       uses: dmikalova/project-standards/.github/workflows/terramate-apply-all.yaml@main
 #       secrets: inherit
 
 name: Terramate Apply All CI/CD

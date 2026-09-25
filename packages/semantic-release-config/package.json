@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dmikalova/github-meta.git",
+    "url": "git+https://github.com/dmikalova/project-standards.git",
     "directory": "packages/semantic-release-config"
   },
   "publishConfig": {

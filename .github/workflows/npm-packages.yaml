@@ -6,7 +6,7 @@
 # Usage in other repos:
 #   jobs:
 #     publish:
-#       uses: dmikalova/github-meta/.github/workflows/publish-packages.yaml@main
+#       uses: dmikalova/project-standards/.github/workflows/publish-packages.yaml@main
 #       secrets: inherit
 
 name: NPM Publish CI/CD

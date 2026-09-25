@@ -12,13 +12,13 @@ all non-manual stacks.
 ### Requirement: Workflow is reusable
 
 The workflow SHALL be defined as a reusable workflow (`workflow_call`) in
-github-meta at `.github/workflows/terramate-apply-all.yaml`, callable from other
+project-standards at `.github/workflows/terramate-apply-all.yaml`, callable from other
 repos with `secrets: inherit`.
 
 #### Scenario: Called from infrastructure repo
 
 - **WHEN** the infrastructure repo workflow uses
-  `dmikalova/github-meta/.github/workflows/terramate-apply-all.yaml@main`
+  `dmikalova/project-standards/.github/workflows/terramate-apply-all.yaml@main`
 - **THEN** the workflow executes in the context of the calling repo
 
 ### Requirement: Workflow triggers on push, schedule, and manual dispatch

@@ -6,7 +6,7 @@
 # Usage in app repo:
 #   jobs:
 #     deploy:
-#       uses: dmikalova/github-meta/.github/workflows/deno-cloudrun.yaml@main
+#       uses: dmikalova/project-standards/.github/workflows/deno-cloudrun.yaml@main
 #       secrets: inherit
 
 name: Deno CI/CD
