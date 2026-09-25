@@ -31,7 +31,6 @@ env:
   GCP_PROJECT: mklv-infrastructure
   WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
   WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
-  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
 
 concurrency:
   group: conform
@@ -106,10 +105,13 @@ jobs:
           go-version: stable
           cache: false
 
+      - name: Setup project-standards
+        uses: dmikalova/project-standards/.github/actions/setup@main
+
       - name: Conform
         id: conform
         run: |
-          go run "$PROJECT_STANDARDS" conform -json | tee /tmp/report.json
+          project-standards conform -json | tee /tmp/report.json
           if [ -n "$(git status --porcelain)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git status --short

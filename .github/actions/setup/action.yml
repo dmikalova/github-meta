@@ -1,0 +1,22 @@
+# Put the project-standards binary on PATH, built from this action's own
+# checkout. A workflow that uses project-standards' workflows or actions at a
+# ref gets the binary from that same ref, so the two always agree: resolving
+# `@latest` through the Go module proxy lags a new release by the proxy's cache
+# time, and a workflow can then call a command its binary doesn't have yet.
+#
+# Needs Go set up first (project-standards' go.mod sets the minimum version).
+
+name: Setup project-standards
+description: Build the project-standards binary from this ref and put it on PATH.
+
+runs:
+  using: composite
+  steps:
+    - name: Build project-standards
+      shell: bash
+      run: |
+        root="$GITHUB_ACTION_PATH/../../.."
+        bin="$RUNNER_TEMP/project-standards-bin"
+        mkdir -p "$bin"
+        go build -C "$root" -trimpath -o "$bin/project-standards" ./cmd/project-standards
+        echo "$bin" >> "$GITHUB_PATH"

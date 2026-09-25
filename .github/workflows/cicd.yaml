@@ -37,7 +37,6 @@ env:
   WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
   WIF_INFRA_SA: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
   SVU: github.com/caarlos0/svu/v3@v3.4.1
-  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
   GORELEASER: github.com/goreleaser/goreleaser/v2@v2.18.2
 
 concurrency:
@@ -111,6 +110,9 @@ jobs:
           go-version: ${{ needs.detect.outputs.go != 'true' && 'stable' || '' }}
           cache: false
 
+      - name: Setup project-standards
+        uses: dmikalova/project-standards/.github/actions/setup@main
+
       # Every commit type releases: feat is a minor, a breaking change is a
       # major, everything else is a patch (--always). Only tags on this branch
       # count, so a tag left on rewritten history can't be picked up. A rerun
@@ -142,7 +144,7 @@ jobs:
         env:
           PREVIOUS: ${{ steps.version.outputs.previous }}
         run: |
-          go run "$PROJECT_STANDARDS" changelog -from "$PREVIOUS" > /tmp/notes.md
+          project-standards changelog -from "$PREVIOUS" > /tmp/notes.md
           cat /tmp/notes.md
           {
             echo "notes<<NOTES_EOF"
