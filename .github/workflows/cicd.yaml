@@ -1,0 +1,495 @@
+# CI/CD - the one reusable workflow for every project (ADR 0006)
+#
+# Detects the project's languages from its files and its kind from
+# mklv.config.json, then:
+#   check   each language's own check, plus the shared checks
+#   release svu picks the next version from Conventional Commits; cli projects
+#           release binaries with goreleaser, everything else gets a GitHub
+#           release with generated notes
+#   deploy  cloudrun: image build, Atlas schema apply, Cloud Run deploy
+#           infra:    terramate apply
+#   notify  posts every main-branch result, pass or fail, to Discord #deploys
+#
+# Usage in a project's .github/workflows/cicd.yaml:
+#   jobs:
+#     cicd:
+#       uses: dmikalova/project-standards/.github/workflows/cicd.yaml@main
+#       permissions:
+#         contents: write
+#         id-token: write
+#         packages: write
+#       secrets: inherit
+
+name: CI/CD
+
+on:
+  workflow_call:
+
+# Hardcoded GCP configuration (convention over configuration)
+env:
+  GCP_PROJECT: mklv-infrastructure
+  GCP_REGION: us-west1
+  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
+  WIF_INFRA_SA: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
+  MAGE: github.com/magefile/mage@v1.17.2
+  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
+  SVU: github.com/caarlos0/svu/v3@v3.4.1
+  GORELEASER: github.com/goreleaser/goreleaser/v2@v2.18.2
+
+concurrency:
+  group: cicd-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Detect
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+      deno: ${{ steps.detect.outputs.deno }}
+      terraform: ${{ steps.detect.outputs.terraform }}
+      terramate: ${{ steps.detect.outputs.terramate }}
+      gate: ${{ steps.detect.outputs.gate }}
+      kind: ${{ steps.detect.outputs.kind }}
+      name: ${{ steps.detect.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # kind comes from mklv.config.json. Until every project declares it, it
+      # is inferred: a terramate root is infra, a Dockerfile or a Deno app is
+      # cloudrun, a Go module with cmd/ is cli, anything else is a library.
+      - name: Detect
+        id: detect
+        run: |
+          go=false; [ -f go.mod ] && go=true
+          deno=false; { [ -f deno.json ] || [ -f deno.jsonc ]; } && deno=true
+          terraform=false; git ls-files '*.tf' | grep -q . && terraform=true
+          terramate=false; [ -f terramate.tm.hcl ] && terramate=true
+
+          # Go projects that import project-standards' ci package run
+          # ci:check. Ones still on their own magefiles run `mage check` until
+          # they migrate.
+          gate=none
+          if $go && git ls-files 'magefile.go' 'magefiles/*.go' | grep -q .; then
+            gate=mage-check
+            git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go' && gate=ci-check
+          fi
+
+          kind=$(jq -r '.kind // empty' mklv.config.json 2>/dev/null || true)
+          if [ -z "$kind" ]; then
+            if $terramate; then kind=infra
+            elif [ -f Dockerfile ] || $deno; then kind=cloudrun
+            elif $go && [ -d cmd ]; then kind=cli
+            else kind=library
+            fi
+          fi
+
+          name=$(jq -r '.name // empty' mklv.config.json 2>/dev/null || true)
+          name=${name:-${GITHUB_REPOSITORY#*/}}
+
+          {
+            echo "go=$go"
+            echo "deno=$deno"
+            echo "terraform=$terraform"
+            echo "terramate=$terramate"
+            echo "gate=$gate"
+            echo "kind=$kind"
+            echo "name=$name"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  check:
+    name: Check
+    needs: detect
+    runs-on: ubuntu-latest
+    env:
+      # The commits this run introduces, for commit-message linting.
+      CI_COMMIT_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history for commit and secret scanning
+
+      - name: Go Setup (project)
+        if: needs.detect.outputs.go == 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Go runs the shared tools (ADR 0004), so every project gets it.
+      - name: Go Setup (tools)
+        if: needs.detect.outputs.go != 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Go Check
+        if: needs.detect.outputs.go == 'true'
+        env:
+          GATE: ${{ needs.detect.outputs.gate }}
+        run: |
+          case "$GATE" in
+            ci-check) go run "$MAGE" ci:check ;;
+            mage-check) go run github.com/magefile/mage check ;;
+            *)
+              echo "::error::Go projects must import project-standards' ci package from their magefiles (ADR 0002)."
+              exit 1
+              ;;
+          esac
+
+      # Go projects get these through ci:check; everything else through the
+      # project-standards binary.
+      - name: Shared Checks
+        if: needs.detect.outputs.go != 'true'
+        run: go run "$PROJECT_STANDARDS" check
+
+      - name: Deno Cache
+        if: needs.detect.outputs.deno == 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/deno
+          key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
+          restore-keys: |
+            deno-${{ runner.os }}-
+
+      - name: Deno Setup
+        if: needs.detect.outputs.deno == 'true'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version-file: .deno-version
+
+      - name: Deno Check
+        if: needs.detect.outputs.deno == 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+        run: |
+          [ -f .npmrc ] && cp .npmrc "$HOME/.npmrc"
+          deno install
+          if deno task 2>&1 | grep -qE '^- build$'; then deno task build; fi
+          deno lint
+          deno task check
+          deno task test
+
+      - name: OpenTofu Setup
+        if: needs.detect.outputs.terraform == 'true'
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Terraform Format Check
+        if: needs.detect.outputs.terraform == 'true'
+        run: tofu fmt -check -recursive
+
+      - name: Terramate Setup
+        if: needs.detect.outputs.terramate == 'true'
+        uses: terramate-io/terramate-action@v2
+
+      - name: Terramate Format Check
+        if: needs.detect.outputs.terramate == 'true'
+        run: terramate fmt --check
+
+  release:
+    name: Release
+    needs: [detect, check]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history and tags for svu
+
+      - name: Go Setup
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ${{ needs.detect.outputs.go == 'true' && 'go.mod' || '' }}
+          go-version: ${{ needs.detect.outputs.go != 'true' && 'stable' || '' }}
+          cache: false
+
+      # Every commit type releases: feat is a minor, a breaking change is a
+      # major, everything else is a patch (--always). Only tags on this branch
+      # count, so a tag left on rewritten history can't be picked up. A rerun
+      # of an already-released commit reuses its version.
+      - name: Version
+        id: version
+        run: |
+          current=$(go run "$SVU" current --tag.mode current)
+          if git tag --points-at HEAD | grep -qx "$current"; then
+            echo "HEAD is already released as $current"
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=$current" >> "$GITHUB_OUTPUT"
+          else
+            next=$(go run "$SVU" next --always --tag.mode current)
+            echo "Releasing $next (previous $current)"
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=$next" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: GitHub Release
+        if: steps.version.outputs.released == 'true' && needs.detect.outputs.kind != 'cli'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "$VERSION" --target "$GITHUB_SHA" --generate-notes
+
+      # goreleaser reads the version from a local tag. It creates the GitHub
+      # release, and GitHub creates the tag on this commit.
+      - name: goreleaser Release
+        if: steps.version.outputs.released == 'true' && needs.detect.outputs.kind == 'cli'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git tag "$VERSION"
+          go run "$GORELEASER" release --clean
+
+  deploy-cloudrun:
+    name: Deploy (Cloud Run)
+    needs: [detect, release]
+    if: github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'cloudrun'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    env:
+      NAME: ${{ needs.detect.outputs.name }}
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Image Name
+        id: image
+        run: |
+          tag="${NAME}:${VERSION#v}"
+          {
+            echo "local=$tag"
+            echo "ghcr=ghcr.io/dmikalova/$tag"
+            echo "gar=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT}/ghcr/dmikalova/$tag"
+          } >> "$GITHUB_OUTPUT"
+
+      # A Dockerfile controls its own image. Deno apps without one get the
+      # standard two-stage distroless image.
+      - name: Buildah Build
+        env:
+          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
+          IMAGE: ${{ steps.image.outputs.local }}
+          DENO: ${{ needs.detect.outputs.deno }}
+        run: |
+          if [ -f Dockerfile ]; then
+            buildah build -t "$IMAGE" .
+          elif [ "$DENO" = true ]; then
+            DENO_VERSION=$(cat .deno-version)
+            [ -f .npmrc ] && cp .npmrc "$HOME/.npmrc"
+
+            BUILD=$(buildah from "ghcr.io/denoland/deno:${DENO_VERSION}")
+            buildah config --workingdir /app "$BUILD"
+            [ -f "$HOME/.npmrc" ] && buildah copy "$BUILD" "$HOME/.npmrc" /root/.npmrc
+            buildah copy "$BUILD" deno.lock deno.jsonc /app/
+            buildah copy "$BUILD" src /app/src
+            buildah run --env NPM_TOKEN="$NPM_TOKEN" "$BUILD" -- deno install
+
+            ARTIFACT=$(buildah from "ghcr.io/denoland/deno:distroless-${DENO_VERSION}")
+            buildah copy --from "$BUILD" "$ARTIFACT" /app /app
+            buildah copy --from "$BUILD" "$ARTIFACT" /deno-dir /deno-dir
+            buildah config --env DENO_DIR=/deno-dir "$ARTIFACT"
+            buildah config --workingdir /app "$ARTIFACT"
+            buildah config --entrypoint '["deno"]' "$ARTIFACT"
+            buildah config --cmd "run --cached-only --permission-set src/main.ts" "$ARTIFACT"
+            buildah commit "$ARTIFACT" "$IMAGE"
+          else
+            echo "::error::cloudrun projects need a Dockerfile unless they are Deno apps."
+            exit 1
+          fi
+
+      - name: GHCR Push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ steps.image.outputs.local }}
+          GHCR: ${{ steps.image.outputs.ghcr }}
+        run: |
+          buildah tag "$IMAGE" "$GHCR"
+          buildah login -u dmikalova -p "$GITHUB_TOKEN" ghcr.io
+          buildah push "$GHCR"
+
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_DEPLOY_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: DB Schema Setup
+        id: schema
+        run: |
+          if [ ! -f db/schema.hcl ]; then
+            echo "No db/schema.hcl, skipping schema apply"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # The schema name matches the Terraform convention: dashes become
+          # underscores.
+          echo "schema_name=$(echo "$NAME" | tr '-' '_')" >> "$GITHUB_OUTPUT"
+
+          config_json=$(gcloud secrets versions access latest --secret="${NAME}-config" --project="$GCP_PROJECT")
+          DATABASE_URL_SESSION=$(echo "$config_json" | jq -r '.DATABASE_URL_SESSION')
+          echo "::add-mask::$DATABASE_URL_SESSION"
+          echo "database_url_session=$DATABASE_URL_SESSION" >> "$GITHUB_OUTPUT"
+
+      - name: Atlas Setup
+        if: steps.schema.outputs.skip != 'true'
+        uses: ariga/setup-atlas@v0
+
+      - name: Atlas Schema Apply
+        if: steps.schema.outputs.skip != 'true'
+        env:
+          URL: ${{ steps.schema.outputs.database_url_session }}
+          SCHEMA: ${{ steps.schema.outputs.schema_name }}
+        run: |
+          atlas schema diff \
+            --from "$URL" \
+            --to file://db/schema.hcl \
+            --dev-url "docker://postgres/15/dev?search_path=public" \
+            --schema "$SCHEMA" \
+            --format '{{ sql . "  " }}' > /tmp/migration.sql
+
+          echo "Planned changes:"
+          cat /tmp/migration.sql
+
+          if grep -qiE "DROP (TABLE|COLUMN|INDEX|CONSTRAINT)" /tmp/migration.sql; then
+            echo "::error::Destructive changes detected! Apply manually with 'deno task db:apply' then push again."
+            exit 1
+          fi
+
+          atlas schema apply \
+            --url "$URL" \
+            --to file://db/schema.hcl \
+            --dev-url "docker://postgres/15/dev?search_path=public" \
+            --schema "$SCHEMA" \
+            --auto-approve
+
+      - name: Cloud Run Deploy
+        env:
+          GAR: ${{ steps.image.outputs.gar }}
+        run: |
+          gcloud run deploy "$NAME" \
+            --image "$GAR" \
+            --region "$GCP_REGION" \
+            --project "$GCP_PROJECT" \
+            --quiet
+
+  deploy-infra:
+    name: Deploy (Terramate)
+    needs: [detect, release]
+    if: github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'infra'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: terramate-apply
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_INFRA_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: OpenTofu Setup
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: SOPS Setup
+        run: |
+          curl -fsSL -o /tmp/sops "https://github.com/getsops/sops/releases/download/v3.11.0/sops-v3.11.0.linux.amd64"
+          chmod +x /tmp/sops
+          sudo mv /tmp/sops /usr/local/bin/sops
+
+      - name: SOPS Age Key
+        run: |
+          SOPS_AGE_KEY=$(gcloud secrets versions access latest --secret=sops-age-key --project="$GCP_PROJECT")
+          echo "::add-mask::$(echo "$SOPS_AGE_KEY" | tail -1)"
+          {
+            echo "SOPS_AGE_KEY<<EOF"
+            echo "$SOPS_AGE_KEY"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Terramate Setup
+        uses: terramate-io/terramate-action@v2
+
+      - name: Tofu Provider Cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.tofu.d/plugin-cache
+          key: tofu-providers-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: tofu-providers-
+
+      - name: Terramate Apply All Stacks
+        run: |
+          # The GitHub provider uses the token from SOPS, not the workflow's.
+          GITHUB_TOKEN=$(sops -d --extract '["GITHUB_TOKEN"]' secrets/github.sops.json)
+          export GITHUB_TOKEN
+          export TF_PLUGIN_CACHE_DIR="$HOME/.tofu.d/plugin-cache"
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          terramate script run --no-tags=manual cicd
+
+  notify:
+    name: Notify
+    needs: [detect, check, release, deploy-cloudrun, deploy-infra]
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      # Every project notifies as the deploy SA, the only one that can read the
+      # webhook; infra projects also carry the mklv-deploy topic.
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_DEPLOY_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: Discord
+        env:
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          NAME: ${{ needs.detect.outputs.name }}
+          KIND: ${{ needs.detect.outputs.kind }}
+          VERSION: ${{ needs.release.outputs.version }}
+          MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          webhook=$(gcloud secrets versions access latest --secret=discord-webhook-deploys --project="$GCP_PROJECT")
+          echo "::add-mask::$webhook"
+
+          subject=$(printf '%s\n' "$MESSAGE" | head -1)
+          subject=${subject:-${GITHUB_SHA::7}}
+          if [ "$FAILED" = true ]; then
+            title="❌ ${NAME} failed"
+            color=15158332
+          else
+            title="✅ ${NAME} ${VERSION} (${KIND})"
+            color=3066993
+          fi
+
+          jq -n \
+            --arg title "$title" \
+            --arg url "$RUN_URL" \
+            --arg description "$subject" \
+            --argjson color "$color" \
+            '{embeds: [{title: $title, url: $url, description: $description, color: $color}]}' |
+            curl -fsS -H 'Content-Type: application/json' -d @- "$webhook"
