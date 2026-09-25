@@ -10,6 +10,10 @@
 #           infra:    terramate apply
 #   notify  posts every main-branch result, pass or fail, to Discord #deploys
 #
+# Scheduled runs (the standard caller runs weekly) are health checks: they
+# check every project and re-apply infra projects, but release and deploy
+# nothing else, and notify only on failure.
+#
 # Usage in a project's .github/workflows/cicd.yaml:
 #   jobs:
 #     cicd:
@@ -32,8 +36,6 @@ env:
   WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
   WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
   WIF_INFRA_SA: github-actions-infra@mklv-infrastructure.iam.gserviceaccount.com
-  MAGE: github.com/magefile/mage@v1.17.2
-  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
   SVU: github.com/caarlos0/svu/v3@v3.4.1
   GORELEASER: github.com/goreleaser/goreleaser/v2@v2.18.2
 
@@ -57,145 +59,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # kind comes from mklv.config.json. Until every project declares it, it
-      # is inferred: a terramate root is infra, a Dockerfile or a Deno app is
-      # cloudrun, a Go module with cmd/ is cli, anything else is a library.
+      # Shared with the conformance bot. Referenced by full path: inside a
+      # reusable workflow, ./ would resolve against the caller's repository.
       - name: Detect
         id: detect
-        run: |
-          go=false; [ -f go.mod ] && go=true
-          deno=false; { [ -f deno.json ] || [ -f deno.jsonc ]; } && deno=true
-          terraform=false; git ls-files '*.tf' | grep -q . && terraform=true
-          terramate=false; [ -f terramate.tm.hcl ] && terramate=true
-
-          # Go projects that import project-standards' ci package run
-          # ci:check. Ones still on their own magefiles run `mage check` until
-          # they migrate.
-          gate=none
-          if $go && git ls-files 'magefile.go' 'magefiles/*.go' | grep -q .; then
-            gate=mage-check
-            git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go' && gate=ci-check
-          fi
-
-          kind=$(jq -r '.kind // empty' mklv.config.json 2>/dev/null || true)
-          if [ -z "$kind" ]; then
-            if $terramate; then kind=infra
-            elif [ -f Dockerfile ] || $deno; then kind=cloudrun
-            elif $go && [ -d cmd ]; then kind=cli
-            else kind=library
-            fi
-          fi
-
-          name=$(jq -r '.name // empty' mklv.config.json 2>/dev/null || true)
-          name=${name:-${GITHUB_REPOSITORY#*/}}
-
-          {
-            echo "go=$go"
-            echo "deno=$deno"
-            echo "terraform=$terraform"
-            echo "terramate=$terramate"
-            echo "gate=$gate"
-            echo "kind=$kind"
-            echo "name=$name"
-          } | tee -a "$GITHUB_OUTPUT"
+        uses: dmikalova/project-standards/.github/actions/detect@main
 
   check:
     name: Check
     needs: detect
     runs-on: ubuntu-latest
-    env:
-      # The commits this run introduces, for commit-message linting.
-      CI_COMMIT_RANGE: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0 # full history for commit and secret scanning
 
-      - name: Go Setup (project)
-        if: needs.detect.outputs.go == 'true'
-        uses: actions/setup-go@v6
+      - name: Check
+        uses: dmikalova/project-standards/.github/actions/check@main
         with:
-          go-version-file: go.mod
-          cache: true
-
-      # Go runs the shared tools (ADR 0004), so every project gets it.
-      - name: Go Setup (tools)
-        if: needs.detect.outputs.go != 'true'
-        uses: actions/setup-go@v6
-        with:
-          go-version: stable
-          cache: false
-
-      - name: Go Check
-        if: needs.detect.outputs.go == 'true'
-        env:
-          GATE: ${{ needs.detect.outputs.gate }}
-        run: |
-          case "$GATE" in
-            ci-check) go run "$MAGE" ci:check ;;
-            mage-check) go run github.com/magefile/mage check ;;
-            *)
-              echo "::error::Go projects must import project-standards' ci package from their magefiles (ADR 0002)."
-              exit 1
-              ;;
-          esac
-
-      # Go projects get these through ci:check; everything else through the
-      # project-standards binary.
-      - name: Shared Checks
-        if: needs.detect.outputs.go != 'true'
-        run: go run "$PROJECT_STANDARDS" check
-
-      - name: Deno Cache
-        if: needs.detect.outputs.deno == 'true'
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/deno
-          key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
-          restore-keys: |
-            deno-${{ runner.os }}-
-
-      - name: Deno Setup
-        if: needs.detect.outputs.deno == 'true'
-        uses: denoland/setup-deno@v2
-        with:
-          deno-version-file: .deno-version
-
-      - name: Deno Check
-        if: needs.detect.outputs.deno == 'true'
-        env:
-          NPM_TOKEN: ${{ secrets.PKG_READ_TOKEN }}
-        run: |
-          [ -f .npmrc ] && cp .npmrc "$HOME/.npmrc"
-          deno install
-          if deno task 2>&1 | grep -qE '^- build$'; then deno task build; fi
-          deno lint
-          deno task check
-          deno task test
-
-      - name: OpenTofu Setup
-        if: needs.detect.outputs.terraform == 'true'
-        uses: opentofu/setup-opentofu@v1
-        with:
-          tofu_wrapper: false
-
-      - name: Terraform Format Check
-        if: needs.detect.outputs.terraform == 'true'
-        run: tofu fmt -check -recursive
-
-      - name: Terramate Setup
-        if: needs.detect.outputs.terramate == 'true'
-        uses: terramate-io/terramate-action@v2
-
-      - name: Terramate Format Check
-        if: needs.detect.outputs.terramate == 'true'
-        run: terramate fmt --check
+          go: ${{ needs.detect.outputs.go }}
+          deno: ${{ needs.detect.outputs.deno }}
+          terraform: ${{ needs.detect.outputs.terraform }}
+          terramate: ${{ needs.detect.outputs.terramate }}
+          gate: ${{ needs.detect.outputs.gate }}
+          # The commits this run introduces, for commit-message linting.
+          commit-range: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
+          npm-token: ${{ secrets.PKG_READ_TOKEN }}
 
   release:
     name: Release
     needs: [detect, check]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -254,7 +149,7 @@ jobs:
   deploy-cloudrun:
     name: Deploy (Cloud Run)
     needs: [detect, release]
-    if: github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'cloudrun'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'schedule' && needs.detect.outputs.kind == 'cloudrun'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -387,10 +282,13 @@ jobs:
             --project "$GCP_PROJECT" \
             --quiet
 
+  # Runs on scheduled runs too, where release is skipped, to correct drift.
   deploy-infra:
     name: Deploy (Terramate)
-    needs: [detect, release]
-    if: github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'infra'
+    needs: [detect, check, release]
+    if: >-
+      always() && github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'infra' &&
+      needs.check.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.release.result)
     runs-on: ubuntu-latest
     concurrency:
       group: terramate-apply
@@ -451,7 +349,9 @@ jobs:
   notify:
     name: Notify
     needs: [detect, check, release, deploy-cloudrun, deploy-infra]
-    if: always() && github.ref == 'refs/heads/main'
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      (github.event_name != 'schedule' || contains(needs.*.result, 'failure'))
     runs-on: ubuntu-latest
     permissions:
       id-token: write

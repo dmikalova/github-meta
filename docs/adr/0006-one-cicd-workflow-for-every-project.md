@@ -20,4 +20,6 @@ There was one reusable workflow per kind of project: `go-cloudrun.yaml`, `deno-c
    - **library**: tag only
 5. **Notify:** every deploy, whether it passed or failed, is posted to the Discord `#deploys` channel through a webhook. The webhook URL is stored with SOPS in infrastructure, synced to Secret Manager, and read through WIF.
 
+**Scheduled runs are health checks.** The standard caller also runs weekly. A scheduled run checks the project, catching breakage from tool and dependency updates, and re-applies `infra` projects to correct drift. It releases and deploys nothing else, and notifies only on failure.
+
 The per-kind workflows and the Deno Dagger pipeline are replaced. Each project's `cicd.yaml` caller is a fixed file that the conformance bot keeps up to date (ADR 0007).

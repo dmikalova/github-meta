@@ -1,0 +1,262 @@
+# Conformance - weekly, unsupervised (ADR 0007)
+#
+# For every repo with the mklv-conform topic (never forks or archived repos):
+# check it out, run `project-standards conform`, and if anything changed, run
+# the project's own checks on the changed tree. When they pass, commit through
+# the GitHub API, which signs the commit, straight to the default branch. A
+# summary of the run goes to Discord #maintenance.
+#
+# The token is a fine-grained PAT (Contents and Workflows read/write) in Secret
+# Manager as github-conform-token, read through WIF as the deploy SA.
+
+name: Conformance
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: Comma-separated repo names to limit the run to (default all opted-in)
+        required: false
+        default: ""
+      dry-run:
+        description: Conform and check, but don't commit
+        type: boolean
+        default: false
+
+env:
+  GCP_PROJECT: mklv-infrastructure
+  WIF_PROVIDER: projects/443065563587/locations/global/workloadIdentityPools/github/providers/github-oidc
+  WIF_DEPLOY_SA: github-actions-deploy@mklv-infrastructure.iam.gserviceaccount.com
+  PROJECT_STANDARDS: github.com/dmikalova/project-standards/cmd/project-standards@latest
+
+concurrency:
+  group: conform
+  cancel-in-progress: false
+
+jobs:
+  list:
+    name: List
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    outputs:
+      repos: ${{ steps.list.outputs.repos }}
+    steps:
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_DEPLOY_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: List Opted-in Repos
+        id: list
+        env:
+          ONLY: ${{ inputs.repos }}
+        run: |
+          GH_TOKEN=$(gcloud secrets versions access latest --secret=github-conform-token --project="$GCP_PROJECT")
+          echo "::add-mask::$GH_TOKEN"
+          export GH_TOKEN
+
+          repos=$(gh repo list dmikalova --topic mklv-conform --source --no-archived --limit 200 --json name --jq '[.[].name] | sort')
+          if [ -n "$ONLY" ]; then
+            repos=$(jq -c --arg only "$ONLY" '($only | split(",") | map(gsub("^ +| +$"; ""))) as $o | map(select(. as $r | $o | index($r)))' <<<"$repos")
+          fi
+          echo "repos=$(jq -c . <<<"$repos")" | tee -a "$GITHUB_OUTPUT"
+
+  conform:
+    name: Conform ${{ matrix.repo }}
+    needs: list
+    if: needs.list.outputs.repos != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        repo: ${{ fromJSON(needs.list.outputs.repos) }}
+    steps:
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_DEPLOY_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: Token
+        id: token
+        run: |
+          token=$(gcloud secrets versions access latest --secret=github-conform-token --project="$GCP_PROJECT")
+          echo "::add-mask::$token"
+          echo "token=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          repository: dmikalova/${{ matrix.repo }}
+          token: ${{ steps.token.outputs.token }}
+          fetch-depth: 0 # full history for LICENSE years, commit and secret scanning
+
+      - name: Go Setup
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Conform
+        id: conform
+        run: |
+          go run "$PROJECT_STANDARDS" conform -json | tee /tmp/report.json
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --short
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect
+        id: detect
+        if: steps.conform.outputs.changed == 'true'
+        uses: dmikalova/project-standards/.github/actions/detect@main
+
+      # The same checks the project's own cicd workflow runs. A project that
+      # fails them is skipped and reported, never pushed.
+      - name: Check
+        id: check
+        if: steps.conform.outputs.changed == 'true'
+        uses: dmikalova/project-standards/.github/actions/check@main
+        with:
+          go: ${{ steps.detect.outputs.go }}
+          deno: ${{ steps.detect.outputs.deno }}
+          terraform: ${{ steps.detect.outputs.terraform }}
+          terramate: ${{ steps.detect.outputs.terramate }}
+          gate: ${{ steps.detect.outputs.gate }}
+          npm-token: ${{ secrets.PKG_READ_TOKEN }}
+
+      # createCommitOnBranch commits are signed by GitHub, which the rulesets
+      # require. expectedHeadOid makes a concurrent push fail the commit rather
+      # than be overwritten.
+      - name: Commit
+        id: commit
+        if: steps.conform.outputs.changed == 'true' && !inputs.dry-run
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          REPO: dmikalova/${{ matrix.repo }}
+        run: |
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          head=$(git rev-parse HEAD)
+
+          additions='[]'
+          deletions='[]'
+          while IFS= read -r -d '' entry; do
+            status=${entry:0:2}
+            path=${entry:3}
+            if [ "${status// /}" = D ]; then
+              deletions=$(jq -c --arg p "$path" '. + [{path: $p}]' <<<"$deletions")
+            else
+              additions=$(jq -c --arg p "$path" --arg c "$(base64 -w0 "$path")" '. + [{path: $p, contents: $c}]' <<<"$additions")
+            fi
+          done < <(git status --porcelain -z --untracked-files=all)
+
+          jq -n \
+            --arg repo "$REPO" \
+            --arg branch "$branch" \
+            --arg head "$head" \
+            --argjson additions "$additions" \
+            --argjson deletions "$deletions" \
+            '{
+              query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
+              variables: {input: {
+                branch: {repositoryNameWithOwner: $repo, branchName: $branch},
+                expectedHeadOid: $head,
+                message: {headline: "chore: conform to project-standards"},
+                fileChanges: {additions: $additions, deletions: $deletions}
+              }}
+            }' > /tmp/commit.json
+
+          url=$(gh api graphql --input /tmp/commit.json --jq '.data.createCommitOnBranch.commit.url')
+          echo "Committed $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Result
+        if: always()
+        env:
+          REPO: ${{ matrix.repo }}
+          CHANGED: ${{ steps.conform.outputs.changed }}
+          CONFORM: ${{ steps.conform.outcome }}
+          CHECK: ${{ steps.check.outcome }}
+          COMMIT: ${{ steps.commit.outcome }}
+          URL: ${{ steps.commit.outputs.url }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          if [ "$CONFORM" != success ]; then status=failed
+          elif [ "$CHANGED" != true ]; then status=unchanged
+          elif [ "$CHECK" != success ]; then status=skipped
+          elif [ "$DRY_RUN" = true ]; then status=dry-run
+          elif [ "$COMMIT" = success ]; then status=pushed
+          else status=failed
+          fi
+          findings='[]'
+          [ -s /tmp/report.json ] && findings=$(jq -c '.findings // []' /tmp/report.json 2>/dev/null || echo '[]')
+          mkdir -p /tmp/result
+          jq -n --arg repo "$REPO" --arg status "$status" --arg url "$URL" --argjson findings "$findings" \
+            '{repo: $repo, status: $status, url: $url, findings: $findings}' > "/tmp/result/$REPO.json"
+          cat "/tmp/result/$REPO.json"
+
+      - name: Upload Result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.repo }}
+          path: /tmp/result/${{ matrix.repo }}.json
+
+  summary:
+    name: Summary
+    needs: [list, conform]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Download Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: results
+          merge-multiple: true
+
+      - name: GCP Authn
+        uses: google-github-actions/auth@v3
+        with:
+          service_account: ${{ env.WIF_DEPLOY_SA }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+
+      - name: Discord
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          LIST: ${{ needs.list.result }}
+        run: |
+          webhook=$(gcloud secrets versions access latest --secret=discord-webhook-maintenance --project="$GCP_PROJECT")
+          echo "::add-mask::$webhook"
+
+          if [ "$LIST" != success ]; then
+            description="Listing opted-in repos failed."
+            color=15158332
+          else
+            results=$(jq -s 'sort_by(.repo)' results/*.json 2>/dev/null || echo '[]')
+            description=$(jq -r '
+              def line: "• **\(.repo)**: \(.status)" + (if .url != "" then " ([commit](\(.url)))" else "" end)
+                + (if (.findings | length) > 0 then "\n" + (.findings | map("  ↳ \(.path): \(.message)") | join("\n")) else "" end);
+              if length == 0 then "No opted-in repos." else map(line) | join("\n") end
+            ' <<<"$results")
+            if jq -e 'any(.[]; .status == "failed" or .status == "skipped")' <<<"$results" >/dev/null; then
+              color=15158332
+            else
+              color=3066993
+            fi
+          fi
+
+          jq -n --arg url "$RUN_URL" --arg description "${description:0:4000}" --argjson color "$color" \
+            '{embeds: [{title: "Conformance run", url: $url, description: $description, color: $color}]}' |
+            curl -fsS -H 'Content-Type: application/json' -d @- "$webhook"

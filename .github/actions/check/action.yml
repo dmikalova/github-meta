@@ -1,0 +1,125 @@
+# Run a checked-out project's checks (ADR 0006): each language's own check,
+# plus the shared checks. Used by the cicd workflow and by the conformance bot,
+# so the bot checks a project exactly the way the project checks itself.
+#
+# The checkout needs full history (fetch-depth: 0) for commit and secret
+# scanning.
+
+name: Check
+description: Run a project's language checks and the shared checks.
+
+inputs:
+  go:
+    description: detect output
+    required: true
+  deno:
+    description: detect output
+    required: true
+  terraform:
+    description: detect output
+    required: true
+  terramate:
+    description: detect output
+    required: true
+  gate:
+    description: detect output
+    required: true
+  commit-range:
+    description: "<from>..<to> of the commits to lint, or empty for merge-base..HEAD"
+    required: false
+    default: ""
+  npm-token:
+    description: token for the private @dmikalova npm packages Deno projects install
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Go Setup (project)
+      if: inputs.go == 'true'
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: go.mod
+        cache: true
+
+    # Go runs the shared tools (ADR 0004), so every project gets it.
+    - name: Go Setup (tools)
+      if: inputs.go != 'true'
+      uses: actions/setup-go@v6
+      with:
+        go-version: stable
+        cache: false
+
+    - name: Go Check
+      if: inputs.go == 'true'
+      shell: bash
+      env:
+        GATE: ${{ inputs.gate }}
+        CI_COMMIT_RANGE: ${{ inputs.commit-range }}
+      run: |
+        case "$GATE" in
+          ci-check) go run github.com/magefile/mage@v1.17.2 ci:check ;;
+          mage-check) go run github.com/magefile/mage check ;;
+          *)
+            echo "::error::Go projects must import project-standards' ci package from their magefiles (ADR 0002)."
+            exit 1
+            ;;
+        esac
+
+    # Go projects get these through ci:check; everything else through the
+    # project-standards binary.
+    - name: Shared Checks
+      if: inputs.go != 'true'
+      shell: bash
+      env:
+        CI_COMMIT_RANGE: ${{ inputs.commit-range }}
+      run: go run github.com/dmikalova/project-standards/cmd/project-standards@latest check
+
+    - name: Deno Cache
+      if: inputs.deno == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/deno
+        key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
+        restore-keys: |
+          deno-${{ runner.os }}-
+
+    - name: Deno Setup
+      if: inputs.deno == 'true'
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version-file: .deno-version
+
+    - name: Deno Check
+      if: inputs.deno == 'true'
+      shell: bash
+      env:
+        NPM_TOKEN: ${{ inputs.npm-token }}
+      run: |
+        [ -f .npmrc ] && cp .npmrc "$HOME/.npmrc"
+        deno install
+        if deno task 2>&1 | grep -qE '^- build$'; then deno task build; fi
+        deno lint
+        deno task check
+        deno task test
+
+    - name: OpenTofu Setup
+      if: inputs.terraform == 'true'
+      uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_wrapper: false
+
+    - name: Terraform Format Check
+      if: inputs.terraform == 'true'
+      shell: bash
+      run: tofu fmt -check -recursive
+
+    - name: Terramate Setup
+      if: inputs.terramate == 'true'
+      uses: terramate-io/terramate-action@v2
+
+    - name: Terramate Format Check
+      if: inputs.terramate == 'true'
+      shell: bash
+      run: terramate fmt --check

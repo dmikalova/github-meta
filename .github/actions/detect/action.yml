@@ -1,0 +1,73 @@
+# Detect a checked-out project's languages, gate and kind (ADR 0006).
+#
+# kind comes from mklv.config.json. Until every project declares it, it is
+# inferred: a terramate root is infra, a Dockerfile or a Deno app is cloudrun,
+# a Go module with cmd/ is cli, anything else is a library.
+
+name: Detect
+description: Detect a project's languages, gate, kind and name.
+
+outputs:
+  go:
+    description: "true when go.mod is at the root"
+    value: ${{ steps.detect.outputs.go }}
+  deno:
+    description: "true when deno.json or deno.jsonc is at the root"
+    value: ${{ steps.detect.outputs.deno }}
+  terraform:
+    description: "true when the project has .tf files"
+    value: ${{ steps.detect.outputs.terraform }}
+  terramate:
+    description: "true when terramate.tm.hcl is at the root"
+    value: ${{ steps.detect.outputs.terramate }}
+  gate:
+    description: "ci-check, mage-check or none: how a Go project checks itself"
+    value: ${{ steps.detect.outputs.gate }}
+  kind:
+    description: "cli, cloudrun, library or infra"
+    value: ${{ steps.detect.outputs.kind }}
+  name:
+    description: "mklv.config.json name, or the repository name"
+    value: ${{ steps.detect.outputs.name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Detect
+      id: detect
+      shell: bash
+      run: |
+        go=false; [ -f go.mod ] && go=true
+        deno=false; { [ -f deno.json ] || [ -f deno.jsonc ]; } && deno=true
+        terraform=false; git ls-files '*.tf' | grep -q . && terraform=true
+        terramate=false; [ -f terramate.tm.hcl ] && terramate=true
+
+        # Go projects that import project-standards' ci package run ci:check.
+        # Ones still on their own magefiles run `mage check` until they migrate.
+        gate=none
+        if $go && git ls-files 'magefile.go' 'magefiles/*.go' | grep -q .; then
+          gate=mage-check
+          git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go' && gate=ci-check
+        fi
+
+        kind=$(jq -r '.kind // empty' mklv.config.json 2>/dev/null || true)
+        if [ -z "$kind" ]; then
+          if $terramate; then kind=infra
+          elif [ -f Dockerfile ] || $deno; then kind=cloudrun
+          elif $go && [ -d cmd ]; then kind=cli
+          else kind=library
+          fi
+        fi
+
+        name=$(jq -r '.name // empty' mklv.config.json 2>/dev/null || true)
+        name=${name:-${GITHUB_REPOSITORY#*/}}
+
+        {
+          echo "go=$go"
+          echo "deno=$deno"
+          echo "terraform=$terraform"
+          echo "terramate=$terramate"
+          echo "gate=$gate"
+          echo "kind=$kind"
+          echo "name=$name"
+        } | tee -a "$GITHUB_OUTPUT"
