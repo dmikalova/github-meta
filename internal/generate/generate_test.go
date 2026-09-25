@@ -30,7 +30,7 @@ func TestGolden(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			files, err := Files(p)
+			files, err := Files(p, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -68,7 +68,7 @@ func TestFilesAreSortedAndDeterministic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := Files(p)
+	first, err := Files(p, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestFilesAreSortedAndDeterministic(t *testing.T) {
 	}
 	// Go randomizes map iteration, so repeated runs would expose unsorted keys.
 	for range 20 {
-		again, err := Files(p)
+		again, err := Files(p, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,8 +98,23 @@ func TestFilesAreSortedAndDeterministic(t *testing.T) {
 	}
 }
 
+func TestFilesWithoutGoModule(t *testing.T) {
+	files, err := Files(&config.Project{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var paths []string
+	for _, f := range files {
+		paths = append(paths, f.Path)
+	}
+	want := []string{".commitlint.yaml", ".gitleaks.toml", ".markdownlint-cli2.yaml"}
+	if !reflect.DeepEqual(paths, want) {
+		t.Errorf("paths without a go.mod = %v, want %v", paths, want)
+	}
+}
+
 func TestHeaders(t *testing.T) {
-	files, err := Files(&config.Project{})
+	files, err := Files(&config.Project{}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +212,7 @@ func TestFilesMergeConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Files(p)
+	_, err = Files(p, true)
 	if err == nil || !strings.Contains(err.Error(), "tools.golangci: linters.enable") {
 		t.Errorf("err = %v, want a conflict at tools.golangci: linters.enable", err)
 	}
@@ -210,7 +225,7 @@ func TestEncodeError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Files(p)
+	_, err = Files(p, true)
 	if err == nil || !strings.Contains(err.Error(), "gitleaks: encoding .gitleaks.toml") {
 		t.Errorf("err = %v, want a TOML encoding error", err)
 	}

@@ -6,10 +6,8 @@ import (
 	"go/doc"
 	"go/parser"
 	"go/token"
-	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -42,41 +40,6 @@ func TestTidyTestOutput(t *testing.T) {
 		"FAIL  ci  0.1s\n"
 	if got := tidyTestOutput(raw); got != want {
 		t.Errorf("tidyTestOutput =\n%s\nwant\n%s", got, want)
-	}
-}
-
-func TestMatchGlob(t *testing.T) {
-	tests := []struct {
-		pattern, name string
-		want          bool
-	}{
-		{"**/go.sum", "go.sum", true},
-		{"**/go.sum", "tools/go.sum", true},
-		{"**/go.sum", "go.sum.bak", false},
-		{"docs/**", "docs/adr/0001.md", true},
-		{"docs/**", "readme/docs.md", false},
-		{"docs/*.md", "docs/a.md", true},
-		{"docs/*.md", "docs/adr/a.md", false},
-		{"**/testdata/**", "internal/generate/testdata/x.golden", true},
-		{"LICENSE", "LICENSE", true},
-		{"LICENSE", "docs/LICENSE", false},
-		{"[", "[", false},
-	}
-	for _, tt := range tests {
-		if got := matchGlob(tt.pattern, tt.name); got != tt.want {
-			t.Errorf("matchGlob(%q, %q) = %v, want %v", tt.pattern, tt.name, got, tt.want)
-		}
-	}
-}
-
-func TestChunks(t *testing.T) {
-	got := chunks([]string{"a", "b", "c", "d", "e"}, 2)
-	want := [][]string{{"a", "b"}, {"c", "d"}, {"e"}}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("chunks = %v, want %v", got, want)
-	}
-	if got := chunks(nil, 2); got != nil {
-		t.Errorf("chunks(nil) = %v, want nil", got)
 	}
 }
 
@@ -156,43 +119,5 @@ func TestTargetDocs(t *testing.T) {
 				rest,
 			)
 		}
-	}
-}
-
-func TestProgramStatus(t *testing.T) {
-	tests := []struct {
-		tail string
-		code int
-		ok   bool
-	}{
-		{"x.go:1: found\nexit status 2\n", 2, true},
-		{"level=error msg=bad config\nexit status 3\n", 3, true},
-		{"exit status 1", 1, true},
-		{"go: downloading failed\n", 0, false},
-		{"exit status 2\nmore output\n", 0, false},
-	}
-	for _, tt := range tests {
-		code, ok := programStatus([]byte(tt.tail))
-		if code != tt.code || ok != tt.ok {
-			t.Errorf("programStatus(%q) = %d, %v; want %d, %v", tt.tail, code, ok, tt.code, tt.ok)
-		}
-	}
-}
-
-func TestTailWriter(t *testing.T) {
-	var sink bytes.Buffer
-	w := &tailWriter{w: &sink}
-	long := strings.Repeat("a", 300)
-	if _, err := io.WriteString(w, long+"\nexit status 4\n"); err != nil {
-		t.Fatal(err)
-	}
-	if sink.Len() != 300+len("\nexit status 4\n") {
-		t.Errorf("tailWriter dropped output: %d bytes", sink.Len())
-	}
-	if code, ok := programStatus(w.bytes()); !ok || code != 4 {
-		t.Errorf("programStatus(tail) = %d, %v; want 4", code, ok)
-	}
-	if len(w.bytes()) != tailSize {
-		t.Errorf("tail is %d bytes, want %d", len(w.bytes()), tailSize)
 	}
 }

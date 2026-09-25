@@ -8,6 +8,7 @@ import (
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 
+	"github.com/dmikalova/project-standards/internal/checks"
 	"github.com/dmikalova/project-standards/internal/generate"
 )
 
@@ -18,7 +19,7 @@ import (
 // misspell -w. Issues a fixer cannot fix are left for ci:check to
 // report; Fix fails only when a tool itself fails.
 func Fix() error {
-	if err := writeGenerated(); err != nil {
+	if err := shared.WriteGenerated(); err != nil {
 		return err
 	}
 	if err := sh.RunV("go", "mod", "tidy"); err != nil {
@@ -27,8 +28,8 @@ func Fix() error {
 	if err := sh.RunV("go", "fix", "./..."); err != nil {
 		return err
 	}
-	status, err := goRunStatus(golangciLint, "run", "--fix")
-	if err := tolerateFindings("golangci-lint", 1, status, err); err != nil {
+	status, err := checks.GoRun(golangciLint, "run", "--fix")
+	if err := shared.TolerateFindings("golangci-lint", 1, status, err); err != nil {
 		return err
 	}
 	if err := fixImports(); err != nil {
@@ -41,17 +42,16 @@ func Fix() error {
 	if err := sh.RunV("go", gciArgs("write")...); err != nil {
 		return err
 	}
-	status, err = goRunStatus(goldmarkLint, "--no-cache", "--fix", markdownGlob)
-	if err := tolerateFindings("goldmark-lint", 1, status, err); err != nil {
+	if err := shared.MarkdownFix(); err != nil {
 		return err
 	}
-	return runMisspell(true)
+	return shared.Spell(true)
 }
 
 // fixImports adds the imports golangci-lint --fix's rewrites need and drops
 // ones they orphaned, over the project's Go files. gci regroups them after.
 func fixImports() error {
-	files, err := projectFiles(nil)
+	files, err := checks.ProjectFiles(nil)
 	if err != nil {
 		return err
 	}
@@ -61,23 +61,10 @@ func fixImports() error {
 			goFiles = append(goFiles, f)
 		}
 	}
-	for _, chunk := range chunks(goFiles, 500) {
+	for _, chunk := range checks.Chunks(goFiles, 500) {
 		if err := sh.RunV("go", append([]string{"run", goimports, "-w"}, chunk...)...); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// tolerateFindings passes a fixer's findings status, which golangci-lint and
-// goldmark-lint use for "issues remain", and returns any other failure.
-func tolerateFindings(tool string, findings, status int, err error) error {
-	if err != nil && status == findings {
-		fmt.Printf("ci:fix: %s left issues it cannot fix; ci:check reports them\n", tool)
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("%s failed (exit status %d): %w", tool, status, err)
 	}
 	return nil
 }

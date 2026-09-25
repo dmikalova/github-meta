@@ -64,3 +64,15 @@ func jsonFields(t reflect.Type) []string {
 	slices.Sort(names)
 	return names
 }
+
+// TestRepositoryConfig checks project-standards' own mklv.config.json parses:
+// no unknown fields, a known kind and well-formed tool overrides.
+func TestRepositoryConfig(t *testing.T) {
+	p, err := Load("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Kind != "cli" || p.Name != "project-standards" {
+		t.Errorf("kind, name = %q, %q; want cli, project-standards", p.Kind, p.Name)
+	}
+}

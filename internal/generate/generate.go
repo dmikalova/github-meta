@@ -42,6 +42,7 @@ type toolConfig struct {
 	base   string // file under templates/base
 	path   string // the path the tool reads its config from
 	format format
+	goOnly bool // generated only in a Go module
 }
 
 // toolConfigs lists every generated config file. Each path is the file the tool
@@ -58,7 +59,13 @@ type toolConfig struct {
 var toolConfigs = []toolConfig{
 	{tool: "commitlint", base: "commitlint.yaml", path: ".commitlint.yaml", format: yamlFormat},
 	{tool: "gitleaks", base: "gitleaks.toml", path: ".gitleaks.toml", format: tomlFormat},
-	{tool: "golangci", base: "golangci.yaml", path: ".golangci.yaml", format: yamlFormat},
+	{
+		tool:   "golangci",
+		base:   "golangci.yaml",
+		path:   ".golangci.yaml",
+		format: yamlFormat,
+		goOnly: true,
+	},
 	{
 		tool:   "markdownlint",
 		base:   "markdownlint-cli2.yaml",
@@ -67,19 +74,26 @@ var toolConfigs = []toolConfig{
 	},
 }
 
-// Files returns every generated file for a project, sorted by path. The output
-// depends only on the project and the embedded templates, and keys are sorted,
-// so comparing it with the files on disk detects drift.
-func Files(p *config.Project) ([]File, error) {
+// Files returns the generated files for a project, sorted by path. goModule
+// says whether the project is a Go module: only a Go module gets the Go-only
+// files, the golangci-lint config and the ruleguard ruleset. The output depends
+// only on the project, goModule and the embedded templates, and keys are
+// sorted, so comparing it with the files on disk detects drift.
+func Files(p *config.Project, goModule bool) ([]File, error) {
 	files := make([]File, 0, len(toolConfigs)+1)
 	for _, tc := range toolConfigs {
+		if tc.goOnly && !goModule {
+			continue
+		}
 		f, err := tc.render(p)
 		if err != nil {
 			return nil, err
 		}
 		files = append(files, f)
 	}
-	files = append(files, ruleguard())
+	if goModule {
+		files = append(files, ruleguard())
+	}
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 	return files, nil
 }
@@ -149,7 +163,7 @@ func header(tool string) string {
 		"#\n" +
 		"# This is the project-standards base config with tools." + tool + " from\n" +
 		"# mklv.config.json merged onto it. Edit mklv.config.json instead, then run\n" +
-		"# `mage ci:fix` to regenerate this file.\n\n"
+		"# `mage ci:fix`, or `project-standards fix` without Go, to regenerate it.\n\n"
 }
 
 // ruleguard returns the ruleset file. It is a standard file rather than a
@@ -168,8 +182,8 @@ func ruleguard() File {
 	return File{Path: RuleguardPath, Content: buf.Bytes()}
 }
 
-// Misspell holds the misspell settings, which ci:spell passes as flags because
-// misspell has no config file. They come from the base in
+// Misspell holds the misspell settings, which the spell check passes as flags
+// because misspell has no config file. They come from the base in
 // templates/base/misspell.yaml merged with tools.misspell.
 type Misspell struct {
 	// Ignore lists corrections to skip, passed as -i.

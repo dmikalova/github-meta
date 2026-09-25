@@ -2,7 +2,7 @@
 #
 # This is the project-standards base config with tools.golangci from
 # mklv.config.json merged onto it. Edit mklv.config.json instead, then run
-# `mage ci:fix` to regenerate this file.
+# `mage ci:fix`, or `project-standards fix` without Go, to regenerate it.
 
 linters:
   default: standard

@@ -1,0 +1,5 @@
+{
+  "$schema": "./schema/mklv.config.schema.json",
+  "name": "project-standards",
+  "kind": "cli"
+}

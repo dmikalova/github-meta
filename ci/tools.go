@@ -1,5 +1,7 @@
 package ci
 
+import "github.com/dmikalova/project-standards/internal/checks"
+
 // Every tool the targets run, pinned as a `go run` package@version. These are
 // the only version pins for the shared checks (ADR 0004): bumping one here
 // bumps every project on its next project-standards update.
@@ -37,3 +39,16 @@ const (
 	// which gofmt and golines do not do.
 	gci = "github.com/daixiang0/gci@v0.14.0"
 )
+
+// SharedTools pins the tools of the shared, language-independent checks. It is
+// how the project-standards binary runs them with the same versions as these
+// targets. It is not a setting: projects leave it as it is.
+var SharedTools = checks.Tools{
+	Commitlint:   commitlint,
+	Gitleaks:     gitleaks,
+	GoldmarkLint: goldmarkLint,
+	Misspell:     misspell,
+}
+
+// shared runs the shared checks for the targets.
+var shared = &checks.Checks{Tools: SharedTools, Label: "ci:", FixCommand: "mage ci:fix"}
