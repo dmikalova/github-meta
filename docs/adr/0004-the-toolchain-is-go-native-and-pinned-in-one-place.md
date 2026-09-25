@@ -11,7 +11,8 @@ The previous toolchain mixed ecosystems: commitlint and semantic-release came fr
 **Every shared tool is a Go program run with `go run pkg@version`. The version constants live only in project-standards, so updating one constant updates every project.**
 
 | Purpose | Tool | Replaces |
-|---|---|---|
+| --- | --- | --- |
+| Go formatting | golines, gci, goimports | gofmt hook |
 | Go lint | golangci-lint v2 | — |
 | Commit messages | conventionalcommit/commitlint | npm commitlint |
 | Spelling | golangci/misspell | typos |
