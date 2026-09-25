@@ -199,3 +199,34 @@ func TestCommitsBadRange(t *testing.T) {
 	t.Setenv(CommitRangeEnv, "nosuchref..HEAD")
 	wantErr(t, testChecks.Commits(), "listing commits in nosuchref..HEAD")
 }
+
+func TestCommitMessage(t *testing.T) {
+	newRepo(t)
+	calls := fakeGo(t, func(c goCall, stdout, _ io.Writer) int {
+		if strings.HasPrefix(c.stdin, "bad") {
+			_, _ = io.WriteString(stdout, "type is missing\n")
+			return 1
+		}
+		return 0
+	})
+	writeFiles(t, map[string]string{
+		"good": "feat: good\n\nA body.\n# Please enter the commit message.\n" +
+			scissors + "\ndiff --git a/x b/x\n",
+		"bad":     "bad message\n",
+		"comment": "# only a comment\n\n",
+	})
+	if err := testChecks.CommitMessage("good"); err != nil {
+		t.Errorf("CommitMessage(good) = %v", err)
+	}
+	if len(*calls) != 1 || (*calls)[0].stdin != "feat: good\n\nA body.\n" {
+		t.Errorf("calls = %v, want the message without comments or the diff", *calls)
+	}
+	var err error
+	out := captureStdout(t, func() { err = testChecks.CommitMessage("bad") })
+	wantErr(t, err, "the commit message failed commitlint")
+	if !strings.HasPrefix(out, "type is missing\n") {
+		t.Errorf("output = %q, want commitlint's", out)
+	}
+	wantErr(t, testChecks.CommitMessage("comment"), "the commit message is empty")
+	wantErr(t, testChecks.CommitMessage("missing"), "reading the commit message")
+}

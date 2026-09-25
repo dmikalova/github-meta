@@ -9,6 +9,7 @@
 //	project-standards <command>
 //	project-standards conform [-json]
 //	project-standards changelog [-from ref] [-to ref]
+//	project-standards commit-msg <file>
 //
 // The commands are:
 //
@@ -21,6 +22,7 @@
 //	drift     check the generated configs are up to date
 //	conform   write every standard file that drifted, and report what needs a human
 //	changelog print release notes for the commits in from..to
+//	commit-msg lint a commit message file, for the commit-msg hook
 //	version   print the version
 //
 // It runs in the project root. The tools run with `go run pkg@version`, pinned
@@ -101,6 +103,7 @@ type checker interface {
 	Spell(write bool) error
 	Secrets() error
 	Commits() error
+	CommitMessage(path string) error
 	Drift() error
 	WriteGenerated() error
 }
@@ -123,6 +126,7 @@ var checkCommands = []command{
 const usage = `Usage: project-standards <command>
        project-standards conform [-json]
        project-standards changelog [-from ref] [-to ref]
+       project-standards commit-msg <file>
 
 Runs the shared, language-independent checks in the current directory, which
 must be the project root.
@@ -139,6 +143,8 @@ Commands:
             human; -json prints the report as JSON
   changelog print Markdown release notes for the commits in from..to, grouped
             by Conventional Commit type; an empty -from starts at the root
+  commit-msg lint the commit message in <file> with commitlint, for lefthook's
+            commit-msg hook
   version   print the version
 `
 
@@ -160,7 +166,7 @@ func run(
 		}
 		return 2
 	}
-	if fs.NArg() == 0 || fs.NArg() > 1 && fs.Arg(0) != "conform" && fs.Arg(0) != "changelog" {
+	if fs.NArg() == 0 || fs.NArg() > 1 && !takesArgs[fs.Arg(0)] {
 		fs.Usage()
 		return 2
 	}
@@ -170,6 +176,12 @@ func run(
 		return runConform(fs.Args()[1:], stdout, stderr, conformHere)
 	case "changelog":
 		return runChangelog(fs.Args()[1:], stdout, stderr, notes)
+	case "commit-msg":
+		if fs.NArg() != 2 {
+			fs.Usage()
+			return 2
+		}
+		err = c.CommitMessage(fs.Arg(1))
 	case "check":
 		err = check(stdout, c)
 	case "fix":
@@ -192,6 +204,9 @@ func run(
 	}
 	return 0
 }
+
+// takesArgs are the commands that take arguments after their name.
+var takesArgs = map[string]bool{"conform": true, "changelog": true, "commit-msg": true}
 
 func indexCommand(name string) int {
 	for i, cmd := range checkCommands {

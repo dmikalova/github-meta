@@ -18,8 +18,11 @@
 
   "commit-msg": {
     "commands": {
+      // The Go commitlint with the generated .commitlint.yaml (ADR 0004), via
+      // project-standards: the copy dotfiles installs on PATH when it knows
+      // commit-msg, otherwise the latest release through go run.
       "commitlint": {
-        "run": "commitlint --edit",
+        "run": "if project-standards help 2>/dev/null | grep -q commit-msg; then project-standards commit-msg {1}; else go run github.com/dmikalova/project-standards/cmd/project-standards@latest commit-msg {1}; fi",
       },
     },
   },

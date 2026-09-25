@@ -24,11 +24,12 @@ func (f *fakeChecker) do(name string) error {
 	return nil
 }
 
-func (f *fakeChecker) Markdown() error    { return f.do("markdown") }
-func (f *fakeChecker) MarkdownFix() error { return f.do("markdown-fix") }
-func (f *fakeChecker) Secrets() error     { return f.do("secrets") }
-func (f *fakeChecker) Commits() error     { return f.do("commits") }
-func (f *fakeChecker) Drift() error       { return f.do("drift") }
+func (f *fakeChecker) Markdown() error                 { return f.do("markdown") }
+func (f *fakeChecker) MarkdownFix() error              { return f.do("markdown-fix") }
+func (f *fakeChecker) Secrets() error                  { return f.do("secrets") }
+func (f *fakeChecker) Commits() error                  { return f.do("commits") }
+func (f *fakeChecker) CommitMessage(path string) error { return f.do("commit-msg:" + path) }
+func (f *fakeChecker) Drift() error                    { return f.do("drift") }
 
 func (f *fakeChecker) WriteGenerated() error { return f.do("write-generated") }
 
@@ -303,6 +304,45 @@ func TestChangelog(t *testing.T) {
 					tt.wantFrom,
 					tt.wantTo,
 				)
+			}
+		})
+	}
+}
+
+func TestCommitMsg(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		fail   string
+		status int
+		ran    []string
+	}{
+		{
+			name: "lints the file",
+			args: []string{"commit-msg", ".git/COMMIT_EDITMSG"},
+			ran:  []string{"commit-msg:.git/COMMIT_EDITMSG"},
+		},
+		{
+			name:   "failure",
+			args:   []string{"commit-msg", "msg"},
+			fail:   "commit-msg:msg",
+			status: 1,
+			ran:    []string{"commit-msg:msg"},
+		},
+		{name: "no file", args: []string{"commit-msg"}, status: 2},
+		{name: "two files", args: []string{"commit-msg", "a", "b"}, status: 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &fakeChecker{fail: map[string]bool{tt.fail: true}}
+			var stdout, stderr bytes.Buffer
+			noConform := func() (*conform.Report, error) { return nil, nil }
+			noNotes := func(string, string) (string, error) { return "", nil }
+			if got := run(tt.args, &stdout, &stderr, c, noConform, noNotes); got != tt.status {
+				t.Errorf("status = %d, want %d", got, tt.status)
+			}
+			if !reflect.DeepEqual(c.ran, tt.ran) {
+				t.Errorf("ran %v, want %v", c.ran, tt.ran)
 			}
 		})
 	}

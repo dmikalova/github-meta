@@ -36,10 +36,6 @@ func (c *Checks) Commits() error {
 	if err != nil {
 		return fmt.Errorf("listing commits in %s: %w", revRange, err)
 	}
-	args := []string{c.Tools.Commitlint, "lint"}
-	if _, err := os.Stat(commitlintConfig); err == nil {
-		args = append(args, "--config", commitlintConfig)
-	}
 	var linted int
 	var failed []string
 	for entry := range strings.SplitSeq(log, "\x00") {
@@ -49,9 +45,8 @@ func (c *Checks) Commits() error {
 		}
 		linted++
 		msg = strings.TrimRight(msg, "\n")
-		var out bytes.Buffer
-		if _, err := goRun(strings.NewReader(msg+"\n"), &out, &out, args...); err != nil {
-			fmt.Printf("%s %s\n%s", sha[:12], firstLine(msg), out.String())
+		if out, err := c.lintMessage(msg); err != nil {
+			fmt.Printf("%s %s\n%s", sha[:12], firstLine(msg), out)
 			failed = append(failed, sha[:12])
 		}
 	}
@@ -64,6 +59,57 @@ func (c *Checks) Commits() error {
 		return fmt.Errorf("commit messages failed commitlint: %s", strings.Join(failed, ", "))
 	}
 	return nil
+}
+
+// CommitMessage lints the commit message in path, for a commit-msg hook: git
+// passes the message file as the hook's first argument. Comment lines and
+// everything below the scissors line, which git strips before committing, are
+// left out.
+func (c *Checks) CommitMessage(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading the commit message: %w", err)
+	}
+	msg := cleanMessage(string(data))
+	if msg == "" {
+		return errors.New("the commit message is empty")
+	}
+	if out, err := c.lintMessage(msg); err != nil {
+		fmt.Print(out)
+		return errors.New("the commit message failed commitlint")
+	}
+	return nil
+}
+
+// scissors is the line git's verbose commit template puts above the diff;
+// git drops it and everything below it.
+const scissors = "# ------------------------ >8 ------------------------"
+
+// cleanMessage drops what git strips from a commit message file: comment lines
+// and everything from the scissors line down.
+func cleanMessage(s string) string {
+	var lines []string
+	for line := range strings.SplitSeq(s, "\n") {
+		if strings.HasPrefix(line, scissors) {
+			break
+		}
+		if !strings.HasPrefix(line, "#") {
+			lines = append(lines, line)
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// lintMessage runs commitlint on one message, with the generated config when
+// the project has one, and returns commitlint's output.
+func (c *Checks) lintMessage(msg string) (string, error) {
+	args := []string{c.Tools.Commitlint, "lint"}
+	if _, err := os.Stat(commitlintConfig); err == nil {
+		args = append(args, "--config", commitlintConfig)
+	}
+	var out bytes.Buffer
+	_, err := goRun(strings.NewReader(msg+"\n"), &out, &out, args...)
+	return out.String(), err
 }
 
 // commitlintConfig is the generated config commitlint lints with.
