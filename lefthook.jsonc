@@ -92,21 +92,15 @@
         ],
       },
 
-      "markdown-lint": {
-        "glob": "**/*.md",
-        "run": "goldmark-lint {all_files}",
+      // Projects without go.mod get the same shared checks (markdown,
+      // spelling, secrets, commit messages, generated-config drift) from the
+      // project-standards binary: the copy dotfiles installs on PATH when it
+      // knows check, otherwise the latest release through go run.
+      "shared-check": {
+        "run": "if project-standards help 2>/dev/null | grep -q commit-msg; then project-standards check; else go run github.com/dmikalova/project-standards/cmd/project-standards@latest check; fi",
         "skip": [
           {
-            "run": "git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go'",
-          },
-        ],
-      },
-
-      "no-gitleaks": {
-        "run": "gitleaks detect . --log-level warn --no-banner --verbose",
-        "skip": [
-          {
-            "run": "git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go'",
+            "run": "git ls-files 'go.mod' | grep -q .",
           },
         ],
       },
@@ -121,18 +115,6 @@
 
       "no-shell-scripts": {
         "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
-      },
-
-      "no-typos": {
-        // Walk the tree (rather than piping an explicit --file-list) so each
-        // repo's typos config excludes and binary detection are honored;
-        // explicit file lists bypass both.
-        "run": "typos --write-changes",
-        "skip": [
-          {
-            "run": "git grep -q 'mage:import ci' -- 'magefile.go' 'magefiles/*.go'",
-          },
-        ],
       },
 
       "terraform-fmt": {
