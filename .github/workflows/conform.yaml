@@ -4,7 +4,8 @@
 # check it out, run `project-standards conform`, and if anything changed, run
 # the project's own checks on the changed tree. When they pass, commit through
 # the GitHub API, which signs the commit, straight to the default branch. A
-# summary of the run goes to Discord #maintenance.
+# summary of the run, with its warning and notice annotations, goes to Discord
+# #maintenance.
 #
 # All GitHub changes go through the gh CLI, authenticated with the
 # infrastructure GitHub token (Secret Manager github-token). Only this
@@ -221,8 +222,14 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions:
+      actions: read
+      checks: read
       id-token: write
     steps:
+      - name: Annotations
+        id: annotations
+        uses: dmikalova/project-standards/.github/actions/annotations@main
+
       - name: Download Results
         uses: actions/download-artifact@v4
         with:
@@ -240,6 +247,7 @@ jobs:
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           LIST: ${{ needs.list.result }}
+          WARNINGS: ${{ steps.annotations.outputs.text }}
         run: |
           webhook=$(gcloud secrets versions access latest --secret=discord-webhook-maintenance --project="$GCP_PROJECT")
           echo "::add-mask::$webhook"
@@ -262,5 +270,9 @@ jobs:
           fi
 
           jq -n --arg url "$RUN_URL" --arg description "${description:0:4000}" --argjson color "$color" \
-            '{embeds: [{title: "Conformance run", url: $url, description: $description, color: $color}]}' |
+            --arg warnings "${WARNINGS:0:4000}" \
+            '{embeds: ([{title: "Conformance run", url: $url, description: $description, color: $color}]
+              + if $warnings == "" then [] else
+                [{title: "⚠️ Warnings and notices", url: $url, description: $warnings, color: 15844367}]
+              end)}' |
             curl -fsS -H 'Content-Type: application/json' -d @- "$webhook"

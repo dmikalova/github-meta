@@ -20,6 +20,7 @@ project.
 | `actions/detect`             | Detect a project's languages, gate and kind                |
 | `actions/check`              | Run a project's checks, shared by cicd and conformance     |
 | `actions/setup`              | Build the `project-standards` binary from the same ref     |
+| `actions/annotations`        | Collect a run's warnings and notices for Discord           |
 
 ### Conventions
 

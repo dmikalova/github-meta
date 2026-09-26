@@ -8,17 +8,21 @@
 #           binaries with goreleaser, everything else gets a gh release
 #   deploy  cloudrun: image build, Atlas schema apply, Cloud Run deploy
 #           infra:    terramate apply
-#   notify  posts every main-branch result, pass or fail, to Discord #deploys
+#   notify  posts every main-branch result, pass or fail, to Discord #deploys,
+#           with the run's warning and notice annotations (deprecations,
+#           runner migrations)
 #
 # Scheduled runs (the standard caller runs weekly) are health checks: they
 # check every project and re-apply infra projects, but release and deploy
-# nothing else, and notify only on failure.
+# nothing else, and notify only on a failure or an annotation.
 #
 # Usage in a project's .github/workflows/cicd.yaml:
 #   jobs:
 #     cicd:
 #       uses: dmikalova/project-standards/.github/workflows/cicd.yaml@main
 #       permissions:
+#         actions: read
+#         checks: read
 #         contents: write
 #         id-token: write
 #         packages: write
@@ -375,13 +379,17 @@ jobs:
   notify:
     name: Notify
     needs: [detect, check, release, deploy-cloudrun, deploy-infra]
-    if: >-
-      always() && github.ref == 'refs/heads/main' &&
-      (github.event_name != 'schedule' || contains(needs.*.result, 'failure'))
+    if: always() && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
+      checks: read
       id-token: write
     steps:
+      - name: Annotations
+        id: annotations
+        uses: dmikalova/project-standards/.github/actions/annotations@main
+
       # Every project notifies as the deploy SA, the only one that can read the
       # webhook; infra projects also carry the mklv-deploy topic.
       - name: GCP Authn
@@ -398,8 +406,14 @@ jobs:
           VERSION: ${{ needs.release.outputs.version }}
           NOTES: ${{ needs.release.outputs.notes }}
           MESSAGE: ${{ github.event.head_commit.message }}
+          WARNINGS: ${{ steps.annotations.outputs.text }}
+          SCHEDULED: ${{ github.event_name == 'schedule' }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
+          if [ "$SCHEDULED" = true ] && [ "$FAILED" != true ] && [ -z "$WARNINGS" ]; then
+            echo "Healthy scheduled run: nothing to post."
+            exit 0
+          fi
           webhook=$(gcloud secrets versions access latest --secret=discord-webhook-deploys --project="$GCP_PROJECT")
           echo "::add-mask::$webhook"
 
@@ -409,6 +423,10 @@ jobs:
             title="❌ ${NAME} failed"
             description=$subject
             color=15158332
+          elif [ "$SCHEDULED" = true ]; then
+            title="✅ ${NAME} weekly check"
+            description=$subject
+            color=3066993
           else
             title="✅ ${NAME} ${VERSION} (${KIND})"
             # The release notes, or the commit when nothing new was released.
@@ -425,5 +443,9 @@ jobs:
             --arg url "$RUN_URL" \
             --arg description "$description" \
             --argjson color "$color" \
-            '{embeds: [{title: $title, url: $url, description: $description, color: $color}]}' |
+            --arg warnings "${WARNINGS:0:4000}" \
+            '{embeds: ([{title: $title, url: $url, description: $description, color: $color}]
+              + if $warnings == "" then [] else
+                [{title: "⚠️ Warnings and notices", url: $url, description: $warnings, color: 15844367}]
+              end)}' |
             curl -fsS -H 'Content-Type: application/json' -d @- "$webhook"

@@ -1,0 +1,40 @@
+# Collect the warning and notice annotations of this run's finished jobs, such
+# as GitHub's deprecation warnings for an action's Node version or a runner
+# label's migration notices, so the Discord notifications can surface them.
+#
+# Needs `actions: read` (to list the run's jobs) and `checks: read` (to read
+# their annotations). Never fails the job: without access it reports nothing.
+
+name: Annotations
+description: Collect the warning and notice annotations of this run's finished jobs.
+
+outputs:
+  text:
+    description: One "• message" line per distinct annotation, or empty
+    value: ${{ steps.collect.outputs.text }}
+
+runs:
+  using: composite
+  steps:
+    - name: Collect
+      id: collect
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        run="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs"
+        # Each annotation becomes one line, its message's lines joined.
+        text=$(
+          gh api --paginate "$run" --jq '.jobs[] | select(.status == "completed") | .id' 2>/dev/null |
+            while read -r job; do
+              gh api --paginate "repos/$GITHUB_REPOSITORY/check-runs/$job/annotations" \
+                --jq '.[] | select(.annotation_level == "warning" or .annotation_level == "notice")
+                  | "• " + (.message | gsub("\\s+"; " "))' 2>/dev/null
+            done | sort -u
+        ) || { echo "Could not read this run's annotations."; text=""; }
+        printf '%s\n' "${text:-No warnings or notices.}"
+        {
+          echo 'text<<ANNOTATIONS_EOF'
+          printf '%s\n' "$text"
+          echo 'ANNOTATIONS_EOF'
+        } >>"$GITHUB_OUTPUT"
