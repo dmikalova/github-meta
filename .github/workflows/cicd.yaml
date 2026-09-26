@@ -83,8 +83,10 @@ jobs:
           terraform: ${{ needs.detect.outputs.terraform }}
           terramate: ${{ needs.detect.outputs.terramate }}
           gate: ${{ needs.detect.outputs.gate }}
-          # The commits this run introduces, for commit-message linting.
-          commit-range: ${{ github.event_name == 'push' && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
+          # The commits this run introduces, for commit-message linting. A
+          # force push's before is no longer in the history, so it lints the
+          # default range instead.
+          commit-range: ${{ github.event_name == 'push' && !github.event.forced && format('{0}..{1}', github.event.before, github.sha) || github.event_name == 'pull_request' && format('{0}..{1}', github.event.pull_request.base.sha, github.event.pull_request.head.sha) || '' }}
           npm-token: ${{ secrets.PKG_READ_TOKEN }}
 
   release:
