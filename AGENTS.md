@@ -1,23 +1,32 @@
 # project-standards
 
 Conventions specific to this repository, which holds the standards every project
-follows and the reusable GitHub Actions workflows that apply them. See
-`docs/adr/` for the design.
+follows and the automation that applies them. See `docs/adr/` for the design and
+`CONTEXT.md` for the vocabulary.
 
-## Reusable Workflows
+## Validating
 
-This repo contains GitHub Actions workflows reused by other repos:
+Run `mage ci:fix && mage ci:check` before calling work done. This repo imports
+its own `ci` package, so it checks itself with the same targets it gives every Go
+project.
 
-| Workflow                   | Purpose                                 |
-| -------------------------- | --------------------------------------- |
-| `deno-cloudrun.yaml`       | Build and deploy Deno apps to Cloud Run |
-| `go-cloudrun.yaml`         | Build and deploy Go apps to Cloud Run   |
-| `npm-packages.yaml`        | Publish npm packages to GitHub Packages |
-| `terramate-apply-all.yaml` | Apply Terramate stacks                  |
+## Workflows and actions
 
-### Workflow Conventions
+| File                         | Purpose                                                    |
+| ---------------------------- | ---------------------------------------------------------- |
+| `workflows/cicd.yaml`        | The reusable CI/CD workflow every project calls            |
+| `workflows/conform.yaml`     | Weekly conformance of the `mklv-conform` projects          |
+| `workflows/self.yaml`        | This repo's own CI/CD, through `cicd.yaml`                 |
+| `actions/detect`             | Detect a project's languages, gate and kind                |
+| `actions/check`              | Run a project's checks, shared by cicd and conformance     |
+| `actions/setup`              | Build the `project-standards` binary from the same ref     |
 
-- Use Workload Identity Federation for GCP auth (no service account keys)
-- Hardcode GCP project/region in workflows (convention over configuration)
-- App repos call workflows with
-  `uses: dmikalova/project-standards/.github/workflows/<name>@main`
+### Conventions
+
+- Use Workload Identity Federation for GCP auth (no service account keys).
+- Hardcode GCP project/region in workflows (convention over configuration).
+- Reference this repo's actions by full path at `@main`: inside a reusable
+  workflow, `./` resolves against the caller's repository.
+- Automation that changes GitHub (branches, commits, repo listing) uses the `gh`
+  CLI. Only this repo and infrastructure may use the full-permission GitHub
+  token; every other project gets `PKG_READ_TOKEN`.

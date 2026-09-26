@@ -1,148 +1,83 @@
 # project-standards
 
-Shared configurations and reusable workflows for all repositories.
+The standards every project follows regardless of language, and the automation
+that keeps projects in line with them. The design is in [`docs/adr/`](docs/adr/)
+and the vocabulary in [`CONTEXT.md`](CONTEXT.md).
 
-## Lefthook Pre-commit Hooks
+## What a project gets
 
-This repo provides a base lefthook configuration that can be extended by other
-repos.
+- **Shared checks:** formatting, build, vet and lint (Go), Markdown, spelling,
+  secrets and commit messages, all Go tools pinned in [`ci/tools.go`](ci/tools.go).
+- **Generated tool configs:** `.golangci.yaml`, `.markdownlint-cli2.yaml`,
+  `.gitleaks.toml` and `.commitlint.yaml`, written from the base configs in
+  [`templates/base/`](templates/base/) merged with the project's overrides.
+  Don't edit them; edit `mklv.config.json`.
+- **One CI/CD workflow:** [`cicd.yaml`](.github/workflows/cicd.yaml) checks,
+  releases and deploys every project, chosen by its languages and `kind`.
+- **Hooks:** the base [`lefthook.jsonc`](lefthook.jsonc) runs the full check on
+  every commit and lints the commit message.
+- **Conformance:** a weekly workflow keeps the standard files current in every
+  project with the `mklv-conform` topic.
 
-### Setup for npm repos
+## Using it
 
-```bash
-npm install --save-dev lefthook
-```
+### Go projects
 
-Create `lefthook.jsonc`:
+Import the `ci` package from the project's magefiles:
 
-```jsonc
-{
-  "remotes": [
-    {
-      "git_url": "https://github.com/dmikalova/project-standards",
-      "ref": "main",
-      "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
+```go
+//go:build mage
+
+package main
+
+import (
+ //mage:import ci
+ "github.com/dmikalova/project-standards/ci"
+)
+
+func init() {
+ // Optional: extra build steps and 100% coverage areas.
+ ci.ExtraBuilds = nil
+ ci.CoverGates = nil
 }
 ```
 
-Add postinstall script to `package.json`:
+Validate locally with `mage ci:fix && mage ci:check`.
 
-```json
-{
-  "scripts": {
-    "postinstall": "lefthook install"
+### Other projects
+
+Install the binary (dotfiles does this):
+
+```bash
+GOBIN=~/.local/bin go install github.com/dmikalova/project-standards/cmd/project-standards@latest
+```
+
+Validate locally with `project-standards fix && project-standards check`.
+
+### Every project
+
+- `lefthook.jsonc` includes the base config:
+
+  ```jsonc
+  {
+    "remotes": [
+      {
+        "configs": ["lefthook.jsonc"],
+        "git_url": "https://github.com/dmikalova/project-standards",
+        "ref": "main",
+        "refetch": true
+      }
+    ]
   }
-}
-```
+  ```
 
-### Setup for Deno repos
+  Run `lefthook install` after cloning.
 
-Install lefthook:
+- `.github/workflows/cicd.yaml` calls
+  `dmikalova/project-standards/.github/workflows/cicd.yaml@main`.
+- `mklv.config.json` is optional. It declares the `kind` (cli, cloudrun, library
+  or infra), deploy settings, tool overrides and ignore-file additions; see
+  [`schema/mklv.config.schema.json`](schema/mklv.config.schema.json).
 
-```bash
-brew install lefthook
-```
-
-Create `lefthook.jsonc`:
-
-```jsonc
-{
-  "remotes": [
-    {
-      "git_url": "https://github.com/dmikalova/project-standards",
-      "ref": "main",
-      "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
-}
-```
-
-Add setup task to `deno.jsonc`:
-
-```jsonc
-{
-  "tasks": {
-    "setup": "lefthook install"
-  }
-}
-```
-
-Run `deno task setup` after cloning.
-
-### Setup for Terraform repos
-
-Install lefthook:
-
-```bash
-brew install lefthook
-```
-
-Create `lefthook.jsonc` in the repo root:
-
-```jsonc
-{
-  "remotes": [
-    {
-      "git_url": "https://github.com/dmikalova/project-standards",
-      "ref": "main",
-      "refetch": true,
-      "configs": ["lefthook.jsonc"]
-    }
-  ]
-}
-```
-
-Run `lefthook install` after cloning.
-
-### Included Checks
-
-**General (all repos):**
-
-- `gitleaks` - Secret detection
-- `check-merge-conflict` - Unresolved merge markers
-- `detect-private-key` - Block .pem/.key files
-- `check-large-files` - Block files > 5MB
-- `no-shell-scripts` - Block .sh files (use TypeScript)
-- `typos` - Auto-fix typos and stage
-- `markdownlint` - Auto-fix markdown and stage
-
-**Deno repos (when deno.json exists):**
-
-- `deno fmt` - Auto-fix and stage
-- `deno lint --fix` - Auto-fix and stage
-- `deno check`
-- `deno test`
-
-**Terraform repos (when terramate.tm.hcl exists):**
-
-- `terramate run -- tofu fmt` - Auto-fix and stage
-- `terramate run -- tofu validate`
-
-**Commit message:**
-
-- `commitlint` - Conventional commit format
-
-### Bypass
-
-For emergency commits, use `--no-verify`:
-
-```bash
-git commit --no-verify -m "emergency fix"
-```
-
-### Manual Checks
-
-Run all checks manually on all files:
-
-```bash
-lefthook run pre-commit --force
-```
-
-### CI Parity
-
-Pre-commit hooks run the same checks as CI. Running on all files ensures
-identical behavior between local development and CI pipelines.
+`project-standards conform` writes all of these from the templates, and the
+weekly conformance workflow runs it for opted-in projects.

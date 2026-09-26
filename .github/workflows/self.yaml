@@ -1,0 +1,24 @@
+# This repo's own CI/CD: the same cicd workflow every project calls, as a cli
+# project (mklv.config.json), so goreleaser releases the project-standards
+# binary. Called locally so a change to cicd.yaml is exercised by its own push.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  cicd:
+    name: CI/CD
+    uses: ./.github/workflows/cicd.yaml
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    secrets: inherit
