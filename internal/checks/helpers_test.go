@@ -83,6 +83,9 @@ func newRepo(t *testing.T) func(args ...string) string {
 		t.Skip("git not on PATH")
 	}
 	t.Chdir(t.TempDir())
+	// The scratch repo has none of the commits a real CI_COMMIT_RANGE names:
+	// start from the default range, as a local run would.
+	t.Setenv(CommitRangeEnv, "")
 	g := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("git", args...)
