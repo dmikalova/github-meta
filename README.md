@@ -11,8 +11,10 @@ and the vocabulary in [`CONTEXT.md`](CONTEXT.md).
   [`ci/tools.go`](ci/tools.go).
 - **Generated tool configs:** `.golangci.yaml`, `.markdownlint-cli2.yaml`,
   `.gitleaks.toml` and `.commitlint.yaml`, written from the base configs in
-  [`templates/base/`](templates/base/) merged with the project's overrides.
-  Don't edit them; edit `mklv.config.json`.
+  [`templates/base/`](templates/base/) merged with the project's overrides,
+  and for a Go project of kind cli a `.goreleaser.yaml` that builds its
+  `name` from its `entrypoint`'s directory, or `cmd/<name>`. Don't edit them;
+  edit `mklv.config.json`.
 - **One CI/CD workflow:** [`cicd.yaml`](.github/workflows/cicd.yaml) checks,
   releases and deploys every project, chosen by its languages and `kind`.
 - **Hooks:** the base [`lefthook.jsonc`](lefthook.jsonc) runs the full check on

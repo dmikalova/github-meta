@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"path"
 	"slices"
 	"strings"
+	"text/template"
 
 	"github.com/BurntSushi/toml"
 	"go.yaml.in/yaml/v3"
@@ -93,6 +95,13 @@ func Files(p *config.Project, goModule bool) ([]File, error) {
 	}
 	if goModule {
 		files = append(files, ruleguard())
+	}
+	if goModule && p.Kind == "cli" {
+		f, err := goreleaser(p)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, f)
 	}
 	slices.SortFunc(files, func(a, b File) int { return strings.Compare(a.Path, b.Path) })
 	return files, nil
@@ -193,6 +202,31 @@ func header(tool string) string {
 		"# This is the project-standards base config with tools." + tool + " from\n" +
 		"# mklv.config.json merged onto it. Edit mklv.config.json instead, then run\n" +
 		"# `mage ci:fix`, or `project-standards fix` without Go, to regenerate it.\n\n"
+}
+
+// GoreleaserPath is where a cli project's goreleaser config is generated.
+const GoreleaserPath = ".goreleaser.yaml"
+
+var goreleaserTemplate = template.Must(template.New("goreleaser").Parse(templates.Goreleaser))
+
+// goreleaser renders the goreleaser config the cicd workflow releases a cli
+// project with (ADR 0006): its default build looks for a main package at the
+// root, where a project's command rarely is. The binary is named after the
+// project and built from the entrypoint's directory, or cmd/<name>.
+func goreleaser(p *config.Project) (File, error) {
+	if p.Name == "" {
+		return File{}, fmt.Errorf("a cli project needs name in %s: its binary is named after it", config.FileName)
+	}
+	main := "./cmd/" + p.Name
+	if p.Entrypoint != "" {
+		main = "."
+		if dir := path.Dir(path.Clean(p.Entrypoint)); dir != "." {
+			main = "./" + dir
+		}
+	}
+	var buf bytes.Buffer
+	err := goreleaserTemplate.Execute(&buf, struct{ Marker, Name, Main string }{Marker, p.Name, main})
+	return File{Path: GoreleaserPath, Content: buf.Bytes()}, err
 }
 
 // ruleguard returns the ruleset file. It is a standard file rather than a

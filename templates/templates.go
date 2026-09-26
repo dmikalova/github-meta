@@ -56,4 +56,10 @@ var (
 	//
 	//go:embed conform/dockerignore
 	Dockerignore []byte
+
+	// Goreleaser is the .goreleaser.yaml a Go project of kind cli is
+	// generated with, as a text/template taking .Marker, .Name and .Main.
+	//
+	//go:embed goreleaser.yaml.tmpl
+	Goreleaser string
 )

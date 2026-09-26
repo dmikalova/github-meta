@@ -14,7 +14,7 @@ There was one reusable workflow per kind of project: `go-cloudrun.yaml`, `deno-c
 2. **Check:** runs each language's own check (`mage ci:check`, `deno task check`, `tofu` and terramate validation), plus the shared checks through the project-standards binary.
 3. **Release**, on main: svu computes the next version from Conventional Commits and tags it, and `project-standards changelog` writes the notes: the commit titles since the previous release, grouped by type as semantic-release did.
 4. **Deploy**, on main, depending on `kind`:
-   - **cli**: goreleaser publishes binaries
+   - **cli**: goreleaser publishes binaries, from a `.goreleaser.yaml` generated like the tool configs (ADR 0005): goreleaser's own default looks for a main package at the root, where a project's command rarely is
    - **cloudrun**: builds the image and deploys to Cloud Run
    - **infra**: terramate apply
    - **library**: a GitHub release with the notes, and nothing to deploy

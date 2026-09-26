@@ -80,6 +80,7 @@ func TestFilesAreSortedAndDeterministic(t *testing.T) {
 		".commitlint.yaml",
 		".gitleaks.toml",
 		".golangci.yaml",
+		".goreleaser.yaml",
 		".markdownlint-cli2.yaml",
 		".ruleguard.go",
 	}
@@ -110,6 +111,54 @@ func TestFilesWithoutGoModule(t *testing.T) {
 	want := []string{".commitlint.yaml", ".gitleaks.toml", ".markdownlint-cli2.yaml"}
 	if !reflect.DeepEqual(paths, want) {
 		t.Errorf("paths without a go.mod = %v, want %v", paths, want)
+	}
+}
+
+func TestGoreleaser(t *testing.T) {
+	tests := []struct {
+		name string
+		p    config.Project
+		main string
+	}{
+		{"default command directory", config.Project{Name: "diatom", Kind: "cli"}, "main: ./cmd/diatom\n"},
+		{"entrypoint", config.Project{Name: "tool", Kind: "cli", Entrypoint: "cmd/tool/main.go"}, "main: ./cmd/tool\n"},
+		{"root entrypoint", config.Project{Name: "tool", Kind: "cli", Entrypoint: "main.go"}, "main: .\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := Files(&tt.p, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got *File
+			for i := range files {
+				if files[i].Path == GoreleaserPath {
+					got = &files[i]
+				}
+			}
+			if got == nil {
+				t.Fatal("no .goreleaser.yaml for a cli project")
+			}
+			content := string(got.Content)
+			if !strings.Contains(content, tt.main) || !strings.Contains(content, "binary: "+tt.p.Name+"\n") ||
+				!IsGenerated(got.Content) || !strings.Contains(content, "main.version={{ .Version }}") {
+				t.Errorf("goreleaser config =\n%s", content)
+			}
+		})
+	}
+	if _, err := Files(&config.Project{Kind: "cli"}, true); err == nil || !strings.Contains(err.Error(), "needs name") {
+		t.Errorf("a cli project without a name: %v", err)
+	}
+	for _, p := range []config.Project{{Name: "x", Kind: "cloudrun"}} {
+		files, _ := Files(&p, true)
+		for _, f := range files {
+			if f.Path == GoreleaserPath {
+				t.Errorf("kind %s got a goreleaser config", p.Kind)
+			}
+		}
+	}
+	if files, _ := Files(&config.Project{Name: "x", Kind: "cli"}, false); len(files) != 3 {
+		t.Errorf("a cli project without a go.mod got %d files", len(files))
 	}
 }
 
