@@ -3,7 +3,7 @@ package ci
 import (
 	"context"
 	"fmt"
-	"strings"
+	"slices"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -36,11 +36,17 @@ func Fix() error {
 		return err
 	}
 	// The formatters run after the code-changing fixers so their output is final.
-	if err := sh.RunV("go", golinesArgs("-w", ".")...); err != nil {
+	files, err := goFiles()
+	if err != nil {
 		return err
 	}
-	if err := sh.RunV("go", gciArgs("write")...); err != nil {
-		return err
+	for _, chunk := range checks.Chunks(files, 500) {
+		if err := sh.RunV("go", golinesArgs(append([]string{"-w"}, chunk...)...)...); err != nil {
+			return err
+		}
+		if err := sh.RunV("go", gciArgs("write", chunk...)...); err != nil {
+			return err
+		}
 	}
 	if err := shared.MarkdownFix(); err != nil {
 		return err
@@ -51,17 +57,12 @@ func Fix() error {
 // fixImports adds the imports golangci-lint --fix's rewrites need and drops
 // ones they orphaned, over the project's Go files. gci regroups them after.
 func fixImports() error {
-	files, err := checks.ProjectFiles(nil)
+	files, err := goFiles()
 	if err != nil {
 		return err
 	}
-	var goFiles []string
-	for _, f := range files {
-		if strings.HasSuffix(f, ".go") && f != generate.RuleguardPath {
-			goFiles = append(goFiles, f)
-		}
-	}
-	for _, chunk := range checks.Chunks(goFiles, 500) {
+	files = slices.DeleteFunc(files, func(f string) bool { return f == generate.RuleguardPath })
+	for _, chunk := range checks.Chunks(files, 500) {
 		if err := sh.RunV("go", append([]string{"run", goimports, "-w"}, chunk...)...); err != nil {
 			return err
 		}
