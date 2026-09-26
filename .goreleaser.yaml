@@ -42,5 +42,5 @@ checksum:
   name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
   algorithm: sha256
 
-changelog:
-  disable: true
+# No changelog section: --release-notes supplies the notes, and disabling the
+# changelog would drop them too.
