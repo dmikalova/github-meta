@@ -108,6 +108,9 @@ jobs:
 
       - name: Setup project-standards
         uses: dmikalova/project-standards/.github/actions/setup@main
+        with:
+          # The check action caches Go for the project's own checks.
+          cache: false
 
       - name: Conform
         id: conform

@@ -53,6 +53,9 @@ runs:
 
     - name: Setup project-standards
       uses: dmikalova/project-standards/.github/actions/setup@main
+      with:
+        # A Go project's setup-go already caches Go, keyed on its go.sum.
+        cache: ${{ inputs.go != 'true' }}
 
     - name: Go Check
       if: inputs.go == 'true'

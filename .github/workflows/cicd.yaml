@@ -114,10 +114,12 @@ jobs:
         with:
           go-version-file: ${{ needs.detect.outputs.go == 'true' && 'go.mod' || '' }}
           go-version: ${{ needs.detect.outputs.go != 'true' && 'stable' || '' }}
-          cache: false
+          cache: false # the setup action caches Go for the release tools
 
       - name: Setup project-standards
         uses: dmikalova/project-standards/.github/actions/setup@main
+        with:
+          cache-key: ${{ env.SVU }} ${{ env.GORELEASER }}
 
       # Every commit type releases: feat is a minor, a breaking change is a
       # major, everything else is a patch (--always). Only tags on this branch

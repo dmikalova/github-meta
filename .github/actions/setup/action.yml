@@ -4,14 +4,57 @@
 # `@latest` through the Go module proxy lags a new release by the proxy's cache
 # time, and a workflow can then call a command its binary doesn't have yet.
 #
+# It also caches Go's module and build caches, keyed on the Go version,
+# project-standards' go.sum and tool pins (ci/tools.go) and any extra pins the
+# job passes, so the `go run pkg@version` tools and this binary are built once
+# per pin rather than every run. Since Go 1.24 the build cache also holds the
+# linked `go run` executables. Jobs that already cache Go through setup-go (a
+# Go project's check) pass cache: false.
+#
 # Needs Go set up first (project-standards' go.mod sets the minimum version).
 
 name: Setup project-standards
 description: Build the project-standards binary from this ref and put it on PATH.
 
+inputs:
+  cache:
+    description: Cache Go's module and build caches, keyed on the tool pins
+    required: false
+    default: "true"
+  cache-key:
+    description: Extra tool pins the job runs with go run, for the cache key
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
+    - name: Go Cache Key
+      id: key
+      if: inputs.cache == 'true'
+      shell: bash
+      env:
+        EXTRA: ${{ inputs.cache-key }}
+      run: |
+        root="$GITHUB_ACTION_PATH/../../.."
+        sum=$({ cat "$root/go.sum" "$root/ci/tools.go"; printf '%s' "$EXTRA"; } | sha256sum | cut -c1-16)
+        prefix="go-tools-$RUNNER_OS-$RUNNER_ARCH-$(go env GOVERSION)-"
+        {
+          echo "prefix=$prefix"
+          echo "key=$prefix$sum"
+          echo "paths<<PATHS_EOF"
+          go env GOCACHE GOMODCACHE
+          echo "PATHS_EOF"
+        } >>"$GITHUB_OUTPUT"
+
+    - name: Go Cache
+      if: inputs.cache == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.key.outputs.paths }}
+        key: ${{ steps.key.outputs.key }}
+        restore-keys: ${{ steps.key.outputs.prefix }}
+
     - name: Build project-standards
       shell: bash
       run: |
