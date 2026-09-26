@@ -30,7 +30,6 @@
   "pre-commit": {
     "exclude": ["node_modules/**", "LICENSE", ".terraform/**"],
     "files": "git ls-files",
-    "no_stash": true,
     "parallel": true,
     "commands": {
       "deno-check": {
@@ -117,12 +116,21 @@
         "run": "if git ls-files '*.sh' | grep .; then\n  echo 'Error: Shell scripts (.sh) are not allowed. Use TypeScript instead.'\n  exit 1\nfi",
       },
 
+      // Format the staged OpenTofu and Terramate files and restage them, so a
+      // commit is always formatted (cicd's check fails on unformatted files).
       "terraform-fmt": {
-        "glob": "**/*.tf",
-        "run": "tofu fmt",
+        "glob": ["*.tf", "**/*.tf"],
+        "run": "tofu fmt {staged_files}",
+        "stage_fixed": true,
+      },
+
+      "terramate-fmt": {
+        "glob": ["*.tm.hcl", "**/*.tm.hcl"],
+        "run": "terramate fmt",
+        "stage_fixed": true,
         "skip": [
           {
-            "run": "! git ls-files '*.tf' '*tm.hcl' | grep -q .",
+            "run": "! git ls-files 'terramate.tm.hcl' | grep -q .",
           },
         ],
       },
