@@ -50,7 +50,7 @@ concurrency:
 jobs:
   detect:
     name: Detect
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       go: ${{ steps.detect.outputs.go }}
       deno: ${{ steps.detect.outputs.deno }}
@@ -72,7 +72,7 @@ jobs:
   check:
     name: Check
     needs: detect
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -97,7 +97,7 @@ jobs:
     name: Release
     needs: [detect, check]
     if: github.ref == 'refs/heads/main' && github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     outputs:
@@ -180,7 +180,7 @@ jobs:
     name: Deploy (Cloud Run)
     needs: [detect, release]
     if: github.ref == 'refs/heads/main' && github.event_name != 'schedule' && needs.detect.outputs.kind == 'cloudrun'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       id-token: write
@@ -319,7 +319,7 @@ jobs:
     if: >-
       always() && github.ref == 'refs/heads/main' && needs.detect.outputs.kind == 'infra' &&
       needs.check.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.release.result)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     concurrency:
       group: terramate-apply
       cancel-in-progress: false
@@ -380,7 +380,7 @@ jobs:
     name: Notify
     needs: [detect, check, release, deploy-cloudrun, deploy-infra]
     if: always() && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       actions: read
       checks: read
