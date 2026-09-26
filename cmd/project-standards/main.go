@@ -8,6 +8,7 @@
 //
 //	project-standards <command>
 //	project-standards conform [-json]
+//	project-standards update-actions [-json]
 //	project-standards changelog [-from ref] [-to ref]
 //	project-standards commit-msg <file>
 //
@@ -21,6 +22,7 @@
 //	commits   lint commit messages not yet on the default branch
 //	drift     check the generated configs are up to date
 //	conform   write every standard file that drifted, and report what needs a human
+//	update-actions move the workflows' GitHub Actions to their latest releases
 //	changelog print release notes for the commits in from..to
 //	commit-msg lint a commit message file, for the commit-msg hook
 //	version   print the version
@@ -34,6 +36,12 @@
 // conform exits 0 whether or not it changed anything: findings are reports, not
 // failures. It exits 1 only when conform itself fails. With -json it prints
 // {"changed": [paths], "findings": [{"rule", "path", "message"}]}.
+//
+// update-actions rewrites the `uses:` references in .github/workflows and
+// .github/actions to each action's latest release, looked up with the gh CLI,
+// and reports what it moved and what it could not resolve. Like conform it
+// exits 0 either way, and with -json it prints
+// {"changed": [paths], "updates": [moves], "findings": [...]}.
 //
 // changelog prints Markdown release notes for the commits in from..to (from
 // every commit when from is empty), grouped by Conventional Commit type. The
@@ -52,6 +60,7 @@ import (
 	"strings"
 
 	"github.com/dmikalova/project-standards/ci"
+	"github.com/dmikalova/project-standards/internal/actions"
 	"github.com/dmikalova/project-standards/internal/changelog"
 	"github.com/dmikalova/project-standards/internal/checks"
 	"github.com/dmikalova/project-standards/internal/conform"
@@ -69,7 +78,34 @@ func main() {
 	conformHere := func() (*conform.Report, error) {
 		return conform.Run(conform.Options{Dir: ".", Govulncheck: ci.Govulncheck})
 	}
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c, conformHere, notesHere))
+	updateHere := func() (*actions.Report, error) { return actions.Update(".", ghResolver{}) }
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, c, conformHere, updateHere, notesHere))
+}
+
+// ghResolver looks up action releases with the gh CLI, which authenticates
+// with GH_TOKEN in CI.
+type ghResolver struct{}
+
+func (ghResolver) LatestRelease(repo string) (string, error) {
+	out, err := ghAPI("repos/"+repo+"/releases/latest", "--jq", ".tag_name")
+	return strings.TrimSpace(out), err
+}
+
+func (ghResolver) HasTag(repo, tag string) (bool, error) {
+	_, err := ghAPI("repos/" + repo + "/git/ref/tags/" + tag)
+	if err != nil && strings.Contains(err.Error(), "HTTP 404") {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// ghAPI runs `gh api` and returns its output, with gh's message on failure.
+func ghAPI(args ...string) (string, error) {
+	out, err := exec.Command("gh", append([]string{"api"}, args...)...).Output()
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+		err = fmt.Errorf("%w: %s", err, string(bytes.TrimSpace(exitErr.Stderr)))
+	}
+	return string(out), err
 }
 
 // notesHere renders the release notes for from..to in the current directory,
@@ -95,6 +131,9 @@ type changeloger func(from, to string) (string, error)
 
 // A conformer conforms the project in the current directory.
 type conformer func() (*conform.Report, error)
+
+// An actionUpdater updates the GitHub Actions in the current directory.
+type actionUpdater func() (*actions.Report, error)
 
 // A checker is the shared checks the commands run.
 type checker interface {
@@ -125,6 +164,7 @@ var checkCommands = []command{
 
 const usage = `Usage: project-standards <command>
        project-standards conform [-json]
+       project-standards update-actions [-json]
        project-standards changelog [-from ref] [-to ref]
        project-standards commit-msg <file>
 
@@ -141,6 +181,8 @@ Commands:
   drift     check the generated configs are up to date
   conform   write every standard file that drifted, and report what needs a
             human; -json prints the report as JSON
+  update-actions move the GitHub Actions in .github to their latest releases;
+            -json prints the report as JSON
   changelog print Markdown release notes for the commits in from..to, grouped
             by Conventional Commit type; an empty -from starts at the root
   commit-msg lint the commit message in <file> with commitlint, for lefthook's
@@ -155,6 +197,7 @@ func run(
 	stdout, stderr io.Writer,
 	c checker,
 	conformHere conformer,
+	updateHere actionUpdater,
 	notes changeloger,
 ) int {
 	fs := flag.NewFlagSet("project-standards", flag.ContinueOnError)
@@ -173,7 +216,9 @@ func run(
 	var err error
 	switch name := fs.Arg(0); name {
 	case "conform":
-		return runConform(fs.Args()[1:], stdout, stderr, conformHere)
+		return runReport("conform", fs.Args()[1:], stdout, stderr, conformHere, printReport)
+	case "update-actions":
+		return runReport("update-actions", fs.Args()[1:], stdout, stderr, updateHere, printUpdates)
 	case "changelog":
 		return runChangelog(fs.Args()[1:], stdout, stderr, notes)
 	case "commit-msg":
@@ -206,7 +251,9 @@ func run(
 }
 
 // takesArgs are the commands that take arguments after their name.
-var takesArgs = map[string]bool{"conform": true, "changelog": true, "commit-msg": true}
+var takesArgs = map[string]bool{
+	"conform": true, "update-actions": true, "changelog": true, "commit-msg": true,
+}
 
 func indexCommand(name string) int {
 	for i, cmd := range checkCommands {
@@ -250,10 +297,17 @@ func fix(c checker) error {
 	return nil
 }
 
-// runConform runs conform with its flags and prints the report. Findings do not
+// runReport runs a command that writes files and reports findings, conform or
+// update-actions, with its -json flag, and prints the report. Findings do not
 // fail it.
-func runConform(args []string, stdout, stderr io.Writer, conformHere conformer) int {
-	fs := flag.NewFlagSet("project-standards conform", flag.ContinueOnError)
+func runReport[R any](
+	name string,
+	args []string,
+	stdout, stderr io.Writer,
+	do func() (R, error),
+	show func(io.Writer, R),
+) int {
+	fs := flag.NewFlagSet("project-standards "+name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { _, _ = io.WriteString(stderr, usage) }
 	asJSON := fs.Bool("json", false, "print the report as JSON")
@@ -266,19 +320,19 @@ func runConform(args []string, stdout, stderr io.Writer, conformHere conformer) 
 		}
 		return 2
 	}
-	report, err := conformHere()
+	report, err := do()
 	if err != nil {
-		_, _ = fmt.Fprintln(stderr, "project-standards conform:", err)
+		_, _ = fmt.Fprintf(stderr, "project-standards %s: %v\n", name, err)
 		return 1
 	}
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		// A Report is strings and slices of strings, which always encode.
+		// A report is strings and slices of strings, which always encode.
 		_ = enc.Encode(report)
 		return 0
 	}
-	printReport(stdout, report)
+	show(stdout, report)
 	return 0
 }
 
@@ -322,6 +376,22 @@ func printReport(w io.Writer, r *conform.Report) {
 		return
 	}
 	_, _ = fmt.Fprintln(w, "conform: findings that need a human:")
+	for _, f := range r.Findings {
+		_, _ = fmt.Fprintf(w, "  [%s] %s: %s\n", f.Rule, f.Path, f.Message)
+	}
+}
+
+// printUpdates prints the actions moved, then the ones that could not be
+// resolved.
+func printUpdates(w io.Writer, r *actions.Report) {
+	if len(r.Updates) == 0 {
+		_, _ = fmt.Fprintln(w, "update-actions: every action is current")
+	} else {
+		_, _ = fmt.Fprintln(w, "update-actions: updated:")
+		for _, u := range r.Updates {
+			_, _ = fmt.Fprintln(w, "  "+u)
+		}
+	}
 	for _, f := range r.Findings {
 		_, _ = fmt.Fprintf(w, "  [%s] %s: %s\n", f.Rule, f.Path, f.Message)
 	}

@@ -10,7 +10,7 @@ Standards drift unless something enforces them. Enforcement could have been a CL
 
 **A scheduled workflow in project-standards runs weekly against every opted-in project. It writes whatever changes are needed and pushes them straight to the default branch. It doesn't open a pull request, and no human reviews the change.**
 
-- **Opt-in:** a project opts in with the `mklv-conform` topic, set in infrastructure's Terraform. Forks are never touched.
+- **Opt-in:** a project opts in with the `mklv-conform` topic, which infrastructure's Terraform gives every repository it manages unless the repository sets `conform = false`. Forks and archived repositories are never touched.
 - **Auth:** the infrastructure GitHub token (SOPS `GITHUB_TOKEN`), synced to GCP Secret Manager as `github-token`. Only project-standards' own federated identity can read it, not a service account other repos can impersonate. infrastructure decrypts it from SOPS, and every other project gets only the package token (`PKG_READ_TOKEN`). Every GitHub change goes through the `gh` CLI.
 - **Signing:** commits are created through the GitHub API, which signs them, so they satisfy the rulesets' signed-commit rule.
 - **Check first:** the bot runs the project's check on the changed tree before committing. Pushing to main deploys `cloudrun` projects, so a project whose check fails is skipped and reported.
@@ -29,5 +29,6 @@ Standards drift unless something enforces them. Enforcement could have been a CL
   - hand-edited tool configs whose overrides need moving into `mklv.config.json`, because deleting them could silently drop real exclusions
   - an invalid `mklv.config.json`
   - a missing README
+- **project-standards updates itself:** the bot never conforms project-standards, but each run moves project-standards' own workflows and composite actions to their actions' latest releases (`project-standards update-actions`). A major-tag reference moves to the latest major, and a fuller version to the latest release. The change is checked and committed the same way as a project's. The tool pins in `ci/tools.go` and the workflow's svu and goreleaser pins are still bumped by hand. An action whose latest release can't be used is reported, not changed.
 - **Reporting:** each run posts a summary to the Discord `#maintenance` channel: projects pushed, unchanged, skipped because their check failed, and failed.
 - **Not enforced:** `CONTEXT.md` and ADRs.

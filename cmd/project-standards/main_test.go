@@ -7,8 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dmikalova/project-standards/internal/actions"
 	"github.com/dmikalova/project-standards/internal/conform"
 )
+
+// noUpdate is an update-actions that must not run.
+func noUpdate() (*actions.Report, error) {
+	return nil, errors.New("update-actions ran")
+}
 
 // fakeChecker records the checks run and fails those named in fail.
 type fakeChecker struct {
@@ -112,7 +118,15 @@ func TestRun(t *testing.T) {
 				t.Error("changelog ran")
 				return "", nil
 			}
-			if got := run(tt.args, &stdout, &stderr, c, noConform, noNotes); got != tt.status {
+			if got := run(
+				tt.args,
+				&stdout,
+				&stderr,
+				c,
+				noConform,
+				noUpdate,
+				noNotes,
+			); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
 			}
 			if !reflect.DeepEqual(c.ran, tt.ran) {
@@ -213,6 +227,7 @@ func TestConform(t *testing.T) {
 				&stderr,
 				&fakeChecker{},
 				conformHere,
+				noUpdate,
 				func(string, string) (string, error) { return "", nil },
 			); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
@@ -286,6 +301,7 @@ func TestChangelog(t *testing.T) {
 				&stderr,
 				&fakeChecker{},
 				noConform,
+				noUpdate,
 				notes,
 			); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
@@ -338,11 +354,94 @@ func TestCommitMsg(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			noConform := func() (*conform.Report, error) { return nil, nil }
 			noNotes := func(string, string) (string, error) { return "", nil }
-			if got := run(tt.args, &stdout, &stderr, c, noConform, noNotes); got != tt.status {
+			if got := run(
+				tt.args,
+				&stdout,
+				&stderr,
+				c,
+				noConform,
+				noUpdate,
+				noNotes,
+			); got != tt.status {
 				t.Errorf("status = %d, want %d", got, tt.status)
 			}
 			if !reflect.DeepEqual(c.ran, tt.ran) {
 				t.Errorf("ran %v, want %v", c.ran, tt.ran)
+			}
+		})
+	}
+}
+
+func TestUpdateActions(t *testing.T) {
+	tests := []struct {
+		name   string
+		args   []string
+		report *actions.Report
+		err    error
+		status int
+		stdout string
+		stderr string
+	}{
+		{
+			name: "updates and findings",
+			args: []string{"update-actions"},
+			report: &actions.Report{
+				Changed: []string{".github/workflows/a.yaml"},
+				Updates: []string{"actions/cache v4 → v5"},
+				Findings: []conform.Finding{
+					{
+						Rule:    "actions",
+						Path:    ".github/workflows/a.yaml",
+						Message: "a/b: no releases",
+					},
+				},
+			},
+			stdout: "update-actions: updated:\n  actions/cache v4 → v5\n" +
+				"  [actions] .github/workflows/a.yaml: a/b: no releases\n",
+		},
+		{
+			name:   "current",
+			args:   []string{"update-actions"},
+			report: &actions.Report{},
+			stdout: "update-actions: every action is current\n",
+		},
+		{
+			name: "json",
+			args: []string{"update-actions", "-json"},
+			report: &actions.Report{
+				Changed:  []string{},
+				Updates:  []string{"x"},
+				Findings: []conform.Finding{},
+			},
+			stdout: "{\n  \"changed\": [],\n  \"updates\": [\n    \"x\"\n  ],\n  \"findings\": []\n}\n",
+		},
+		{
+			name:   "failure",
+			args:   []string{"update-actions"},
+			err:    errors.New("boom"),
+			status: 1,
+			stderr: "project-standards update-actions: boom\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if got := run(
+				tt.args,
+				&stdout,
+				&stderr,
+				&fakeChecker{},
+				func() (*conform.Report, error) { return nil, errors.New("conform ran") },
+				func() (*actions.Report, error) { return tt.report, tt.err },
+				func(string, string) (string, error) { return "", nil },
+			); got != tt.status {
+				t.Errorf("status = %d, want %d", got, tt.status)
+			}
+			if stdout.String() != tt.stdout {
+				t.Errorf("stdout = %q, want %q", stdout.String(), tt.stdout)
+			}
+			if tt.stderr != "" && stderr.String() != tt.stderr {
+				t.Errorf("stderr = %q, want %q", stderr.String(), tt.stderr)
 			}
 		})
 	}

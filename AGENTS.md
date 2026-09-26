@@ -15,7 +15,7 @@ project.
 | File                         | Purpose                                                    |
 | ---------------------------- | ---------------------------------------------------------- |
 | `workflows/cicd.yaml`        | The reusable CI/CD workflow every project calls            |
-| `workflows/conform.yaml`     | Weekly conformance of the `mklv-conform` projects          |
+| `workflows/conform.yaml`     | Weekly conformance, and this repo's own action updates     |
 | `workflows/self.yaml`        | This repo's own CI/CD, through `cicd.yaml`                 |
 | `actions/detect`             | Detect a project's languages, gate and kind                |
 | `actions/check`              | Run a project's checks, shared by cicd and conformance     |

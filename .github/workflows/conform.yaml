@@ -2,7 +2,9 @@
 #
 # For every repo with the mklv-conform topic (never forks or archived repos):
 # check it out, run `project-standards conform`, and if anything changed, run
-# the project's own checks on the changed tree. When they pass, commit through
+# the project's own checks on the changed tree. project-standards itself is
+# never conformed; its entry instead runs `project-standards update-actions`,
+# moving its workflows and actions to their latest releases. When they pass, commit through
 # the GitHub API, which signs the commit, straight to the default branch. A
 # summary of the run, with its warning and notice annotations, goes to Discord
 # #maintenance.
@@ -62,7 +64,8 @@ jobs:
           echo "::add-mask::$GH_TOKEN"
           export GH_TOKEN
 
-          repos=$(gh repo list dmikalova --topic mklv-conform --source --no-archived --limit 200 --json name --jq '[.[].name] | sort')
+          repos=$(gh repo list dmikalova --topic mklv-conform --source --no-archived --limit 200 --json name \
+            --jq '[.[].name | select(. != "project-standards")] + ["project-standards"] | sort')
           if [ -n "$ONLY" ]; then
             repos=$(jq -c --arg only "$ONLY" '($only | split(",") | map(gsub("^ +| +$"; ""))) as $o | map(select(. as $r | $o | index($r)))' <<<"$repos")
           fi
@@ -114,8 +117,15 @@ jobs:
 
       - name: Conform
         id: conform
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          REPO: ${{ matrix.repo }}
         run: |
-          project-standards conform -json | tee /tmp/report.json
+          if [ "$REPO" = project-standards ]; then
+            project-standards update-actions -json | tee /tmp/report.json
+          else
+            project-standards conform -json | tee /tmp/report.json
+          fi
           if [ -n "$(git status --porcelain)" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             git status --short
@@ -152,6 +162,13 @@ jobs:
           GH_TOKEN: ${{ steps.token.outputs.token }}
           REPO: dmikalova/${{ matrix.repo }}
         run: |
+          if [ "$REPO" = dmikalova/project-standards ]; then
+            headline="ci: update GitHub Actions to their latest releases"
+            body=$(jq -r '.updates | map("- " + .) | join("\n")' /tmp/report.json)
+          else
+            headline="chore: conform to project-standards"
+            body=""
+          fi
           branch=$(git rev-parse --abbrev-ref HEAD)
           head=$(git rev-parse HEAD)
 
@@ -173,12 +190,14 @@ jobs:
             --arg head "$head" \
             --argjson additions "$additions" \
             --argjson deletions "$deletions" \
+            --arg headline "$headline" \
+            --arg body "$body" \
             '{
               query: "mutation($input: CreateCommitOnBranchInput!) { createCommitOnBranch(input: $input) { commit { oid url } } }",
               variables: {input: {
                 branch: {repositoryNameWithOwner: $repo, branchName: $branch},
                 expectedHeadOid: $head,
-                message: {headline: "chore: conform to project-standards"},
+                message: ({headline: $headline} + if $body == "" then {} else {body: $body} end),
                 fileChanges: {additions: $additions, deletions: $deletions}
               }}
             }' > /tmp/commit.json

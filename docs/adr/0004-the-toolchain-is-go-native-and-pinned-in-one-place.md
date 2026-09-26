@@ -18,6 +18,7 @@ The previous toolchain mixed ecosystems: commitlint and semantic-release came fr
 | Spelling | golangci/misspell | typos |
 | Markdown | goldmark-lint | — |
 | Secrets | gitleaks (`github.com/zricethezav/gitleaks/v8`) | — |
+| Vulnerabilities | govulncheck | — |
 | Versioning | svu, plus `git tag` | semantic-release |
 | Releases and binaries | goreleaser (free version) | semantic-release |
 
