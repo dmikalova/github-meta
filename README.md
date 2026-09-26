@@ -6,8 +6,9 @@ and the vocabulary in [`CONTEXT.md`](CONTEXT.md).
 
 ## What a project gets
 
-- **Shared checks:** formatting, build, vet and lint (Go), Markdown, spelling,
-  secrets and commit messages, all Go tools pinned in [`ci/tools.go`](ci/tools.go).
+- **Shared checks:** formatting, build, vet, lint and known vulnerabilities
+  (Go), Markdown, spelling, secrets and commit messages, all Go tools pinned in
+  [`ci/tools.go`](ci/tools.go).
 - **Generated tool configs:** `.golangci.yaml`, `.markdownlint-cli2.yaml`,
   `.gitleaks.toml` and `.commitlint.yaml`, written from the base configs in
   [`templates/base/`](templates/base/) merged with the project's overrides.

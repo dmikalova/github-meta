@@ -74,7 +74,7 @@ func fixImports() error {
 // coverage then run after them, in order, so their reports read as two clean
 // blocks rather than interleaving.
 func Check(ctx context.Context) error {
-	mg.CtxDeps(ctx, Format, Tidy, Build, Vet, Lint, Markdown, Spell, Secrets, Commits, Drift)
+	mg.CtxDeps(ctx, Format, Tidy, Build, Vet, Lint, Markdown, Spell, Secrets, Commits, Drift, Vuln)
 	if err := Test(); err != nil {
 		return err
 	}

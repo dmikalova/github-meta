@@ -10,7 +10,7 @@ vex's `mage check` formats files, runs `go fix` and runs both linters with `--fi
 
 **`ci:fix` applies every autofix. `ci:check` only verifies, and it fails on anything the fixers would change.**
 
-- **`ci:check` covers** formatting (as a diff check), build, vet, lint, markdown, spelling, secrets, commit messages, tests and coverage gates.
+- **`ci:check` covers** formatting (as a diff check), build, vet, lint, markdown, spelling, secrets, commit messages, known vulnerabilities (govulncheck), tests and coverage gates. Vulnerabilities fail the next commit, so they get fixed the same day; the weekly conformance run bumps affected modules as a backstop for projects nobody commits to.
 - **CI and diatom run `ci:check`.**
 - **The documented local validator is `mage ci:fix && mage ci:check`** (in non-Go projects, the binary's equivalent).
 - **pre-commit runs the full check**, so every commit is green and breakage shows up at the earliest point. Test suites are expected to stay fast. A slow suite should split its long-running parts into a separate target, not weaken the gate.

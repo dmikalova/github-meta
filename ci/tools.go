@@ -39,8 +39,9 @@ const (
 	// which gofmt and golines do not do.
 	gci = "github.com/daixiang0/gci@v0.14.0"
 
-	// govulncheck reports dependencies with known vulnerabilities. The
-	// conformance bot bumps each one it reports to the fixed version.
+	// govulncheck reports known vulnerabilities the code reaches. ci:vuln fails
+	// on them in every commit and CI run, and the conformance bot bumps each
+	// affected module to its fixed version as a weekly backstop.
 	govulncheck = "golang.org/x/vuln/cmd/govulncheck@v1.8.0"
 )
 

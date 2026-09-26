@@ -22,6 +22,9 @@
 // Every tool is run with `go run pkg@version`, pinned in tools.go, so none of
 // them enter the project's dependency graph.
 //
+// ci:check includes ci:vuln, so a new vulnerability advisory fails the next
+// commit (govulncheck needs network access for its database).
+//
 // # Environment
 //
 // CI_COMMIT_RANGE, as "<from>..<to>", makes ci:commits lint exactly that range
