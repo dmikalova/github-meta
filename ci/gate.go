@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -41,7 +42,7 @@ func Fix() error {
 		return err
 	}
 	for _, chunk := range checks.Chunks(files, 500) {
-		if err := sh.RunV("go", golinesArgs(append([]string{"-w"}, chunk...)...)...); err != nil {
+		if err := settleGolines(chunk); err != nil {
 			return err
 		}
 		if err := sh.RunV("go", gciArgs("write", chunk...)...); err != nil {
@@ -52,6 +53,30 @@ func Fix() error {
 		return err
 	}
 	return shared.Spell(true)
+}
+
+// maxGolinesPasses caps how often settleGolines reruns golines, so a formatter
+// that never settles fails the fix instead of hanging it.
+const maxGolinesPasses = 5
+
+// settleGolines runs golines over files until it has nothing left to change.
+// It can split only part of a long expression, such as a chain of ||, in one
+// pass, so a single run leaves work that ci:check then reports as unformatted.
+func settleGolines(files []string) error {
+	for range maxGolinesPasses {
+		out, err := sh.Output("go", golinesArgs(append([]string{"-l"}, files...)...)...)
+		if err != nil {
+			return err
+		}
+		pending := strings.Fields(out)
+		if len(pending) == 0 {
+			return nil
+		}
+		if err := sh.RunV("go", golinesArgs(append([]string{"-w"}, pending...)...)...); err != nil {
+			return err
+		}
+	}
+	return fmt.Errorf("golines still changes files after %d passes", maxGolinesPasses)
 }
 
 // fixImports adds the imports golangci-lint --fix's rewrites need and drops
