@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/dmikalova/project-standards/templates"
 )
 
 func TestModulePath(t *testing.T) {
@@ -118,6 +120,39 @@ func TestTargetDocs(t *testing.T) {
 				indent+len(rest),
 				rest,
 			)
+		}
+	}
+}
+
+// TestRuleguardImportsKept checks that ci imports every package the ruleguard
+// ruleset imports. The ruleset's ignore build tag hides its imports from go mod
+// tidy, so ci's imports are what keep them in each project's module graph.
+func TestRuleguardImportsKept(t *testing.T) {
+	fset := token.NewFileSet()
+	ruleset, err := parser.ParseFile(fset, "rules.go", templates.Ruleguard, parser.ImportsOnly)
+	if err != nil {
+		t.Fatalf("parse ruleset: %v", err)
+	}
+	names, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kept := map[string]bool{}
+	for _, name := range names {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, name, nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatalf("parse %s: %v", name, err)
+		}
+		for _, imp := range f.Imports {
+			kept[imp.Path.Value] = true
+		}
+	}
+	for _, imp := range ruleset.Imports {
+		if !kept[imp.Path.Value] {
+			t.Errorf("the ruleset imports %s, which the ci package does not import", imp.Path.Value)
 		}
 	}
 }

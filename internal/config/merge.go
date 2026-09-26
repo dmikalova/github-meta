@@ -85,8 +85,8 @@ func merge(path []string, base, override any) (any, error) {
 		switch b := base.(type) {
 		case []any:
 			out := make([]any, 0, len(b)+len(o))
-			out = append(out, clean(b).([]any)...)
-			return append(out, clean(o).([]any)...), nil
+			out = append(out, cleanList(b)...)
+			return append(out, cleanList(o)...), nil
 		case map[string]any:
 			return nil, &ConflictError{Path: join(path), Base: "object", Override: "list"}
 		}
@@ -148,13 +148,18 @@ func clean(v any) any {
 		}
 		return out
 	case []any:
-		out := make([]any, len(t))
-		for i, e := range t {
-			out[i] = clean(e)
-		}
-		return out
+		return cleanList(t)
 	}
 	return v
+}
+
+// cleanList returns a copy of list with clean applied to each element.
+func cleanList(list []any) []any {
+	out := make([]any, len(list))
+	for i, e := range list {
+		out[i] = clean(e)
+	}
+	return out
 }
 
 func join(path []string) string {

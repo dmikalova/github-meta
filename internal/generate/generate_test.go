@@ -130,15 +130,14 @@ func TestRuleguard(t *testing.T) {
 	if !bytes.HasPrefix(f.Content, []byte("//go:build ignore\n\n// Code generated")) {
 		t.Errorf("ruleguard file must open with its build constraint, then the generated marker")
 	}
-	parsed, err := parser.ParseFile(token.NewFileSet(), f.Path, f.Content, parser.ParseComments)
-	if err != nil {
+	// TestRuleguardImportsKept in the ci package checks the file's imports.
+	if _, err := parser.ParseFile(
+		token.NewFileSet(),
+		f.Path,
+		f.Content,
+		parser.ParseComments,
+	); err != nil {
 		t.Fatalf("ruleguard file does not parse: %v", err)
-	}
-	if len(parsed.Imports) != 1 ||
-		parsed.Imports[0].Path.Value != `"github.com/quasilyte/go-ruleguard/dsl"` {
-		t.Errorf(
-			"ruleguard file must import only the dsl package, which the ci package keeps in go.mod",
-		)
 	}
 }
 
