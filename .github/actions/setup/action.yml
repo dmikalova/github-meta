@@ -49,7 +49,7 @@ runs:
 
     - name: Go Cache
       if: inputs.cache == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ${{ steps.key.outputs.paths }}
         key: ${{ steps.key.outputs.key }}

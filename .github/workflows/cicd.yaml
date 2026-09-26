@@ -61,7 +61,7 @@ jobs:
       name: ${{ steps.detect.outputs.name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Shared with the conformance bot. Referenced by full path: inside a
       # reusable workflow, ./ would resolve against the caller's repository.
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history for commit and secret scanning
 
@@ -105,12 +105,12 @@ jobs:
       notes: ${{ steps.notes.outputs.notes }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history and tags for svu
 
       - name: Go Setup
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version-file: ${{ needs.detect.outputs.go == 'true' && 'go.mod' || '' }}
           go-version: ${{ needs.detect.outputs.go != 'true' && 'stable' || '' }}
@@ -192,7 +192,7 @@ jobs:
       VERSION: ${{ needs.release.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Image Name
         id: image
@@ -330,7 +330,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: GCP Authn
         uses: google-github-actions/auth@v3
@@ -339,7 +339,7 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
 
       - name: OpenTofu Setup
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@v2
         with:
           tofu_wrapper: false
 
@@ -360,10 +360,10 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Terramate Setup
-        uses: terramate-io/terramate-action@v2
+        uses: terramate-io/terramate-action@v3
 
       - name: Tofu Provider Cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.tofu.d/plugin-cache
           key: tofu-providers-${{ hashFiles('**/.terraform.lock.hcl') }}

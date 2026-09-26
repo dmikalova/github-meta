@@ -97,14 +97,14 @@ jobs:
           echo "token=$token" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: dmikalova/${{ matrix.repo }}
           token: ${{ steps.token.outputs.token }}
           fetch-depth: 0 # full history for LICENSE years, commit and secret scanning
 
       - name: Go Setup
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: stable
           cache: false
@@ -233,7 +233,7 @@ jobs:
 
       - name: Upload Result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: result-${{ matrix.repo }}
           path: /tmp/result/${{ matrix.repo }}.json
@@ -253,7 +253,7 @@ jobs:
         uses: dmikalova/project-standards/.github/actions/annotations@main
 
       - name: Download Results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: result-*
           path: results

@@ -38,7 +38,7 @@ runs:
   steps:
     - name: Go Setup (project)
       if: inputs.go == 'true'
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version-file: go.mod
         cache: true
@@ -46,7 +46,7 @@ runs:
     # Go runs the shared tools (ADR 0004), so every project gets it.
     - name: Go Setup (tools)
       if: inputs.go != 'true'
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version: stable
         cache: false
@@ -84,7 +84,7 @@ runs:
 
     - name: Deno Cache
       if: inputs.deno == 'true'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.cache/deno
         key: deno-${{ runner.os }}-${{ hashFiles('deno.lock') }}
@@ -112,7 +112,7 @@ runs:
 
     - name: OpenTofu Setup
       if: inputs.terraform == 'true'
-      uses: opentofu/setup-opentofu@v1
+      uses: opentofu/setup-opentofu@v2
       with:
         tofu_wrapper: false
 
@@ -123,7 +123,7 @@ runs:
 
     - name: Terramate Setup
       if: inputs.terramate == 'true'
-      uses: terramate-io/terramate-action@v2
+      uses: terramate-io/terramate-action@v3
 
     - name: Terramate Format Check
       if: inputs.terramate == 'true'
